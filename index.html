@@ -12,24 +12,23 @@
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.3/aframe/build/aframe-ar.js"></script>
 
-  <!-- Firebase（Web v9+ CDN 模块）-->
+  <!-- 预加载 Firebase 模块（避免首次导入闪烁） -->
   <script type="module">
-    // 预加载（防止后面首次 import 时闪烁）
     import "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
   </script>
 
   <style>
-    html, body { margin:0; padding:0; height:100dvh; background:transparent; overflow:hidden;
+    html, body { margin:0; padding:0; height:100dvh; background:#000; overflow:hidden;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
 
-    /* 状态条 & 网络条 */
+    /* 顶部状态 & 网络状态 */
     #scanStatus{
-      position:fixed; top:8px; left:8px; z-index:20; background:rgba(0,0,0,.7);
+      position:fixed; top:8px; left:8px; z-index:20; background:rgba(0,0,0,.75);
       color:#fff; padding:8px 12px; border-radius:12px; font-size:13px; backdrop-filter:blur(8px);
     }
-    #scanStatus.success{ background:rgba(34,197,94,.85); }
-    #scanStatus.error{ background:rgba(239,68,68,.85); }
+    #scanStatus.success{ background:rgba(34,197,94,.9); }
+    #scanStatus.error{ background:rgba(239,68,68,.9); }
     #net{ position:fixed; top:8px; right:8px; z-index:20; background:rgba(0,0,0,.6);
       color:#fff; padding:6px 10px; border-radius:10px; font-size:12px; }
 
@@ -46,23 +45,24 @@
     #ui button{ height:36px; border:none; border-radius:10px; background:#4ad; color:#002; font-weight:700; padding:0 16px; }
     #status{ margin-top:6px; font-size:12px; opacity:.85; }
 
-    /* ——关键：DOM 视频当背景，画布在上—— */
-    #arjs-video, video#arjs-video{
-      position:fixed !important; top:0; left:0; width:100vw; height:100vh;
-      object-fit:cover; z-index:0; background:#000;
+    /* 让相机画面一定可见（DOM视频做背景 + WebGL画布在上层） */
+    video, #arjs-video, video#arjs-video{
+      position:fixed !important; top:0 !important; left:0 !important;
+      width:100vw !important; height:100vh !important; object-fit:cover !important;
+      z-index:0 !important; background:#000 !important; display:block !important; visibility:visible !important; opacity:1 !important;
     }
-    canvas.a-canvas{ position:fixed !important; top:0; left:0; z-index:1; }
+    canvas.a-canvas{ position:fixed !important; top:0 !important; left:0 !important; z-index:1 !important; background:transparent !important; }
 
     .a-enter-vr-button, .a-enter-ar-button, .a-orientation-modal{ display:none !important; }
     *{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
   </style>
 </head>
 <body>
-  <!-- 顶部状态 -->
+  <!-- 顶部状态条 -->
   <div id="scanStatus">🔎 正在扫描 Hiro / Kanji…</div>
   <div id="net">🟢 在线</div>
 
-  <!-- AR 场景：使用 DOM 视频（videoTexture:false） -->
+  <!-- AR 场景（使用 DOM 视频：videoTexture:false） -->
   <a-scene id="scene" embedded vr-mode-ui="enabled:false"
            renderer="alpha:true; colorManagement:true; physicallyCorrectLights:true; antialias:true"
            arjs="sourceType:webcam; videoTexture:false; debugUIEnabled:false; trackingMethod:best; maxDetectionRate:60; canvasWidth:640; canvasHeight:480">
@@ -70,15 +70,17 @@
     <a-entity light="type:ambient; intensity:0.7"></a-entity>
     <a-entity light="type:directional; intensity:0.8" position="0.5 1 0.5"></a-entity>
 
-    <!-- Marker：把可点击区域放大（6x6m），用于拾取点 -->
-    <a-marker id="marker-hiro" preset="hiro">
-      <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0" material="opacity:0; transparent:true"></a-plane>
-    </a-marker>
-    <a-marker id="marker-kanji" preset="kanji">
+    <!-- 识别两种预设标记；加 emitevents 以确保能触发事件 -->
+    <a-marker id="marker-hiro" preset="hiro" emitevents="true">
+      <!-- 放大不可见的可点平面（用于拾取三维点） -->
       <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0" material="opacity:0; transparent:true"></a-plane>
     </a-marker>
 
-    <!-- 用鼠标/触摸射线命中 dropzone -->
+    <a-marker id="marker-kanji" preset="kanji" emitevents="true">
+      <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0" material="opacity:0; transparent:true"></a-plane>
+    </a-marker>
+
+    <!-- 用鼠标/触摸射线点击 .dropzone -->
     <a-entity id="mouse" cursor="rayOrigin: mouse" raycaster="objects: .dropzone; interval: 0"></a-entity>
 
     <a-entity camera></a-entity>
@@ -99,7 +101,7 @@
   </div>
 
   <script type="module">
-    /********* 状态/DOM *********/
+    /******** 基本状态 ********/
     const $scan = document.getElementById('scanStatus');
     const $net  = document.getElementById('net');
     const scene = document.getElementById('scene');
@@ -110,44 +112,55 @@
     const $stat = document.getElementById('status');
     const $btn  = document.getElementById('submit');
 
-    function setScan(text, cls){ $scan.className=''; if(cls) $scan.classList.add(cls); $scan.textContent = text; }
-    function setNet(online){ $net.textContent = online ? '🟢 在线' : '🔴 离线'; }
-    setNet(navigator.onLine);
-    addEventListener('online',  ()=>setNet(true));
-    addEventListener('offline', ()=>setNet(false));
+    const setScan = (txt, cls='') => { $scan.className = cls; $scan.textContent = txt; };
+    const setNet  = on => $net.textContent = on ? '🟢 在线' : '🔴 离线';
+    setNet(navigator.onLine); addEventListener('online',()=>setNet(true)); addEventListener('offline',()=>setNet(false));
+    const vibrate = (n=20)=>{ try{ navigator.vibrate && navigator.vibrate(n);}catch{} };
 
-    /********* 识别状态 *********/
+    /******** 识别状态（事件 + 轮询双保险） ********/
     const found = new Set();
     const hiro  = document.getElementById('marker-hiro');
     const kanji = document.getElementById('marker-kanji');
-    const vibrate = (n=20)=>{ try{ navigator.vibrate && navigator.vibrate(n);}catch{} };
 
     const onFound = name => { found.add(name); setScan(`✅ 已识别 ${name}，可点选放置`, 'success'); vibrate(20); };
-    const onLost  = () => { if(found.size===0) setScan('🔎 正在扫描 Hiro / Kanji…'); };
+    const onLost  = ()   => { if(found.size===0) setScan('🔎 正在扫描 Hiro / Kanji…'); };
 
+    // 事件监听
     hiro.addEventListener('markerFound', ()=>onFound('Hiro'));
     kanji.addEventListener('markerFound', ()=>onFound('Kanji'));
     hiro.addEventListener('markerLost',  ()=>{found.delete('Hiro'); onLost();});
     kanji.addEventListener('markerLost', ()=>{found.delete('Kanji'); onLost();});
 
-    /********* 选点预览 *********/
+    // 轮询可见性（Safari 上更稳）
+    setInterval(()=>{
+      const hVis = hiro.object3D?.visible;
+      const kVis = kanji.object3D?.visible;
+      if(hVis || kVis){
+        if(hVis) found.add('Hiro');
+        if(kVis) found.add('Kanji');
+        setScan(`✅ 已识别 ${[...found].join(' / ')}，可点选放置`, 'success');
+      }else{
+        found.clear(); onLost();
+      }
+    }, 500);
+
+    /******** 选点预览 ********/
     const USER_ID = 'user_' + Math.random().toString(36).slice(2,8);
     let CURRENT = { anchor:null, pos:null };
 
-    function findMarker(el){ let p=el; while(p && p.tagName){ if(p.tagName.toLowerCase()==='a-marker') return p; p=p.parentEl; } return null; }
+    const findMarker = el => { let p=el; while(p && p.tagName){ if(p.tagName.toLowerCase()==='a-marker') return p; p=p.parentEl; } return null; };
     const round2 = n => Math.round(n*100)/100;
-    const norm = (x,y,z)=>[round2(x), Math.max(round2(y),0)+0.001, round2(z)];
+    const norm   = (x,y,z)=>[round2(x), Math.max(round2(y),0)+0.001, round2(z)];
 
     function showPreview(anchor, pos, ok=false){
-      const parent = document.getElementById(`marker-${anchor}`);
-      if(!parent) return;
+      const parent = document.getElementById(`marker-${anchor}`); if(!parent) return;
+
       // ring cursor
       let cur = document.getElementById(`cursor-${anchor}`);
       if(!cur){ cur = document.createElement('a-entity'); cur.id=`cursor-${anchor}`; parent.appendChild(cur); }
-      if(ok){ cur.setAttribute('geometry','primitive:ring; radiusInner:0.015; radiusOuter:0.025');
-              cur.setAttribute('material','color:#00FF00; opacity:1'); }
-      else  { cur.setAttribute('geometry','primitive:ring; radiusInner:0.012; radiusOuter:0.02');
-              cur.setAttribute('material','color:#FFD166; opacity:.95'); }
+      cur.setAttribute('geometry', ok? 'primitive:ring; radiusInner:0.015; radiusOuter:0.025'
+                               : 'primitive:ring; radiusInner:0.012; radiusOuter:0.02');
+      cur.setAttribute('material', ok? 'color:#00FF00; opacity:1' : 'color:#FFD166; opacity:.95');
       cur.setAttribute('position', `${pos[0]} ${pos[1]} ${pos[2]}`);
 
       // translucent text preview
@@ -168,6 +181,7 @@
       if(!rc || !rc.intersections?.length) return;
       const hit = rc.intersections[0];
       if(!hit.object?.el?.classList?.contains('dropzone')) return;
+
       const marker = findMarker(hit.object.el); if(!marker) return;
       const local = marker.object3D.worldToLocal(hit.point.clone());
       const anchor = (marker.id==='marker-hiro')?'hiro':'kanji';
@@ -177,7 +191,7 @@
       showPreview(anchor, pos);
     });
 
-    /********* Firebase *********/
+    /******** Firebase 实时同步 ********/
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, orderBy, query, serverTimestamp }
       from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
@@ -194,7 +208,7 @@
     const db  = getFirestore(app);
     const pins = collection(db, "pins");
 
-    // 渲染 Firestore pins
+    // 渲染 Firestore 中的 pin
     const q = query(pins, orderBy('ts','asc'));
     onSnapshot(q, (snap)=>{
       snap.docChanges().forEach(ch=>{
@@ -209,7 +223,7 @@
         const [x,y,z] = d.pos || [0,0,0];
         el.setAttribute('position', `${x} ${y} ${z}`);
 
-        if(d.modelUrl){ // 未来如返回模型
+        if(d.modelUrl){ // 未来可渲染3D模型
           el.removeAttribute('text');
           const s=d.scale||1; el.setAttribute('gltf-model', d.modelUrl); el.setAttribute('scale', `${s} ${s} ${s}`);
         }else{          // 文本
@@ -223,7 +237,7 @@
       });
     });
 
-    // 提交到 Firestore
+    // 写入 Firestore
     async function savePin({anchor,pos,text,scale}){
       return await addDoc(pins, {
         mode:'arjs', anchor, pos, text, scale, userId: USER_ID, ts: serverTimestamp()
@@ -242,11 +256,14 @@
       const {anchor,pos} = CURRENT;
       try{
         $btn.disabled = true;
-        showPreview(anchor,pos,true); setScan('⏳ 正在提交…','');
+        showPreview(anchor,pos,true); setScan('⏳ 正在提交…');
         await savePin({anchor,pos,text:msg,scale:sc});
         setScan('✅ 已提交，其他人也能看到','success');
         $msg.value='';
-        setTimeout(()=>{ ['preview-','cursor-'].forEach(p=>{ const el=document.getElementById(p+anchor); if(el) el.remove(); }); $stat.textContent='就绪'; }, 2000);
+        setTimeout(()=>{
+          ['preview-','cursor-'].forEach(p=>{ const el=document.getElementById(p+anchor); if(el) el.remove(); });
+          $stat.textContent='就绪';
+        }, 2000);
         CURRENT = { anchor:null, pos:null };
       }catch(err){
         console.error(err); setScan('❌ 提交失败','error'); showPreview(anchor,pos,false);
@@ -254,6 +271,19 @@
         setTimeout(()=>{ $btn.disabled=false; onLost(); }, 1000);
       }
     });
+
+    /******** iOS 视频可见性保障（延迟修复） ********/
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const forceVideoVisible = ()=>{
+      const videos = document.querySelectorAll('video');
+      videos.forEach(v=>{
+        v.setAttribute('playsinline','true'); v.setAttribute('webkit-playsinline','true'); v.muted = true;
+        v.style.display='block'; v.style.visibility='visible'; v.style.opacity='1';
+      });
+      const canvas = document.querySelector('.a-canvas'); if(canvas){ canvas.style.zIndex='1'; canvas.style.background='transparent'; }
+    };
+    addEventListener('load', ()=>{ setTimeout(forceVideoVisible, 800); if(isIOS){ [2000,4000,6000].forEach(t=>setTimeout(forceVideoVisible,t)); }});
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) setTimeout(forceVideoVisible, 500); });
   </script>
 </body>
 </html>
