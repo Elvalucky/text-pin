@@ -12,7 +12,7 @@
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.3/aframe/build/aframe-ar.js"></script>
 
-  <!-- 预加载 Firebase 模块（减少首帧闪烁） -->
+  <!-- pre-loading Firebase module） -->
   <script type="module">
     import "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
@@ -22,7 +22,7 @@
     html, body { margin:0; padding:0; height:100dvh; background:#000; overflow:hidden;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
 
-    /* 顶部状态 & 网络状态 & 调试 */
+    /* top status & the status  & debug */
     #scanStatus{
       position:fixed; top:8px; left:8px; z-index:20; background:rgba(0,0,0,.75);
       color:#fff; padding:8px 12px; border-radius:12px; font-size:13px; backdrop-filter:blur(8px);
@@ -37,12 +37,12 @@
       white-space:pre-wrap; max-height:150px; overflow-y:auto;
     }
 
-    /* 底部输入条 */
+    /* the bar in the below */
     #ui{
       position:fixed; left:0; right:0; bottom:0; z-index:20;
       background:rgba(0,0,0,.6); color:#fff; padding:10px 10px calc(12px + env(safe-area-inset-bottom));
       box-shadow:0 -8px 24px rgba(0,0,0,.25); backdrop-filter:blur(8px);
-      display:none; /* 点击开始后再显示 */
+      display:none; /* click start to show */
     }
     #ui form{ display:grid; grid-template-columns:1fr minmax(70px,110px) auto; gap:8px; align-items:end; }
     #ui label{ display:flex; flex-direction:column; font-size:12px; opacity:.95; }
@@ -51,7 +51,7 @@
     #ui button{ height:36px; border:none; border-radius:10px; background:#4ad; color:#002; font-weight:700; padding:0 16px; }
     #status{ margin-top:6px; font-size:12px; opacity:.85; }
 
-    /* 相机画面可见（DOM视频做底、WebGL画布在上） */
+    /* DOM video in the below, WebGLin the paiting */
     video, #arjs-video, video#arjs-video{
       position:fixed !important; top:0 !important; left:0 !important;
       width:100vw !important; height:100vh !important; object-fit:cover !important;
@@ -62,7 +62,7 @@
     .a-enter-vr-button, .a-enter-ar-button, .a-orientation-modal{ display:none !important; }
     *{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
 
-    /* 开始按钮 */
+    /* start button */
     #startAR {
       position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 30;
       height: 48px; border: none; border-radius: 12px; background: #4ad; color: #002;
@@ -71,15 +71,15 @@
   </style>
 </head>
 <body>
-  <!-- 顶部状态条 -->
-  <div id="scanStatus">👋 点击下方按钮开始 AR</div>
-  <div id="net">🟢 在线</div>
-  <div id="debug">等待启动…</div>
+  <!-- top status bar -->
+  <div id="scanStatus">👋 click the start button AR</div>
+  <div id="net">🟢 online</div>
+  <div id="debug">wait for start…</div>
 
-  <!-- 开始按钮（用户手势触发，最稳） -->
-  <button id="startAR">开始 AR</button>
+  <!-- begin button -->
+  <button id="startAR">start AR</button>
 
-  <!-- AR 场景：初始不加载 arjs，防相机抢占；点击后动态 setAttribute -->
+  <!-- AR scene：初始不加载 arjs，防相机抢占；点击后动态 setAttribute -->
   <a-scene id="scene" style="display:none"
            embedded vr-mode-ui="enabled:false"
            renderer="alpha:true; colorManagement:true; physicallyCorrectLights:true; antialias:true">
@@ -92,7 +92,7 @@
       <a-box class="marker-indicator" position="0 0.3 0" width="0.6" height="0.6" depth="0.6"
              material="color:#00ff00; opacity:0.9"
              animation="property: rotation; to: 0 360 0; loop: true; dur: 2000"></a-box>
-      <a-text class="marker-label" value="HIRO 标记已识别" position="0 0.8 0" align="center" 
+      <a-text class="marker-label" value="HIRO marker already been recognized" position="0 0.8 0" align="center" 
               color="#00ff00" scale="0.4 0.4 0.4"></a-text>
     </a-marker>
 
@@ -102,7 +102,7 @@
       <a-box class="marker-indicator" position="0 0.3 0" width="0.6" height="0.6" depth="0.6"
              material="color:#ffd166; opacity:0.9"
              animation="property: rotation; to: 360 0 360; loop: true; dur: 2500"></a-box>
-      <a-text class="marker-label" value="KANJI 标记已识别" position="0 0.8 0" align="center" 
+      <a-text class="marker-label" value="KANJI marker already been recognized" position="0 0.8 0" align="center" 
               color="#ffd166" scale="0.4 0.4 0.4"></a-text>
     </a-marker>
 
@@ -116,18 +116,18 @@
   <div id="ui">
     <form id="form">
       <label>Text
-        <input id="msg" placeholder="输入文本…" maxlength="80" />
+        <input id="msg" placeholder="type text…" maxlength="80" />
       </label>
       <label>Scale
         <input id="scale" type="number" step="0.1" value="1.0" inputmode="decimal" />
       </label>
-      <button type="submit" id="submit">提交 / Pin</button>
+      <button type="submit" id="submit">submit / Pin</button>
     </form>
-    <div id="status">未选位置</div>
+    <div id="status">unchoose position</div>
   </div>
 
   <script type="module">
-    /******** DOM & 状态 ********/
+    /******** DOM & status ********/
     const $scan = document.getElementById('scanStatus');
     const $net  = document.getElementById('net');
     const $debug= document.getElementById('debug');
@@ -139,12 +139,12 @@
     const $stat = document.getElementById('status');
     const $btn  = document.getElementById('submit');
     const $start = document.getElementById('startAR');
-    const setNet  = on => $net.textContent = on ? '🟢 在线' : '🔴 离线';
+    const setNet  = on => $net.textContent = on ? '🟢 online' : '🔴 offline';
     const setDebug= txt => $debug.textContent = txt;
     setNet(navigator.onLine); addEventListener('online',()=>setNet(true)); addEventListener('offline',()=>setNet(false));
     const vibrate = (n=20)=>{ try{ navigator.vibrate && navigator.vibrate(n);}catch{} };
 
-    // 扫描状态（节流）
+    // the status of scan
     let _scanTimer=null, _scanCache='';
     function setScan(txt, cls=''){
       if (txt===_scanCache) return;
@@ -179,7 +179,7 @@
 
     $start.addEventListener('click', async () => {
       try {
-        setScan('📷 正在请求相机权限…');
+        setScan('📷 are asking the permission of camera…');
         // 1) 要权限（在用户手势里最稳）
         const s = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } });
         // 2) 立刻释放，避免和 AR.js 打架
@@ -191,15 +191,15 @@
         scene.style.display = 'block';
         $start.style.display = 'none';
         document.getElementById('ui').style.display = 'block';
-        setScan('🔎 正在扫描 Hiro / Kanji…');
+        setScan('🔎 It is scaning the Hiro / Kanji…');
 
         // iOS 若出现首帧黑屏，多次强制可见
         setTimeout(forceVideoVisible, 600);
         if (isIOS){ [1500, 3000, 5000].forEach(t=>setTimeout(forceVideoVisible, t)); }
       } catch (e) {
         console.error(e);
-        setScan('❌ 需要摄像头权限才能使用 AR', 'error');
-        alert('需要相机权限才能使用 AR');
+        setScan('❌ need permission to use AR', 'error');
+        alert('need camera perssion right for AR');
       }
     });
 
@@ -215,8 +215,8 @@
       const active = Object.entries(markerState)
         .filter(([_, s]) => s.detected)
         .map(([name]) => name.charAt(0).toUpperCase()+name.slice(1));
-      if (active.length>0) setScan(`✅ 已识别 ${active.join(' / ')}，可点选放置`, 'success');
-      else setScan('🔎 正在扫描 Hiro / Kanji…');
+      if (active.length>0) setScan(`✅ already recogize ${active.join(' / ')}，the position can click`, 'success');
+      else setScan('🔎 we are scaning Hiro / Kanji…');
     };
 
     const onFound = (name) => {
@@ -224,7 +224,7 @@
       const s = markerState[key];
       if (!s.detected){
         s.detected = true; vibrate(20);
-        setScan(`✅ 已识别 ${name}，可点选放置`, 'success');
+        setScan(`✅ good to regnize ${name}，the pos to click`, 'success');
       }
       s.lastSeen = Date.now(); s.consecutiveVisible++;
       updateScanStatus();
@@ -261,8 +261,8 @@
         }
       });
       setDebug(`轮询:${pollCount}
-Hiro: ${vis.hiro?'✅可见':'❌隐藏'} (连${markerState.hiro.consecutiveVisible}) 状态:${markerState.hiro.detected?'已识别':'未识别'}
-Kanji:${vis.kanji?'✅可见':'❌隐藏'} (连${markerState.kanji.consecutiveVisible}) 状态:${markerState.kanji.detected?'已识别':'未识别'}`);
+Hiro: ${vis.hiro?'✅visiable':'❌invisiable'} (连${markerState.hiro.consecutiveVisible}) 状态:${markerState.hiro.detected?'recognized':'unrecognized'}
+Kanji:${vis.kanji?'✅visiable':'❌invisiable'} (连${markerState.kanji.consecutiveVisible}) 状态:${markerState.kanji.detected?'recognized':'unrecognized'}`);
     },150);
 
     /******** 点击拾取（校验“当前点击的标记可见”） ********/
@@ -301,7 +301,7 @@ Kanji:${vis.kanji?'✅可见':'❌隐藏'} (连${markerState.kanji.consecutiveVi
       const marker = findMarker(hit.object.el); if(!marker) return;
 
       if (!marker.object3D?.visible){
-        setScan('⚠️ 标记未被稳定识别，请把整张标记放入取景框', 'error');
+        setScan('⚠️ the marker is unrecognized, put marker inside', 'error');
         setTimeout(updateScanStatus, 1200);
         return;
       }
@@ -310,7 +310,7 @@ Kanji:${vis.kanji?'✅可见':'❌隐藏'} (连${markerState.kanji.consecutiveVi
       const local  = marker.object3D.worldToLocal(hit.point.clone());
       const pos    = norm(local.x, local.y, local.z);
       CURRENT = { anchor, pos };
-      $stat.textContent = `已选：${anchor} (${pos.map(n=>n.toFixed(2)).join(', ')})`;
+      $stat.textContent = `clicked：${anchor} (${pos.map(n=>n.toFixed(2)).join(', ')})`;
       showPreview(anchor, pos);
       vibrate(30);
     });
@@ -370,25 +370,25 @@ Kanji:${vis.kanji?'✅可见':'❌隐藏'} (连${markerState.kanji.consecutiveVi
       e.preventDefault();
       const msg = ($msg.value||'').trim();
       const sc  = parseFloat($scale.value||'1')||1;
-      if(!msg) return alert('请输入文本');
-      if(!CURRENT.pos) return alert('请先在标记附近点击选择位置');
-      if(!navigator.onLine) return alert('离线状态，无法提交');
+      if(!msg) return alert('please input text');
+      if(!CURRENT.pos) return alert('please choose the clicked position around marker');
+      if(!navigator.onLine) return alert('offline status, unable submitted');
 
       const {anchor,pos} = CURRENT;
       try{
         $btn.disabled = true;
-        showPreview(anchor,pos,true); setScan('⏳ 正在提交…');
+        showPreview(anchor,pos,true); setScan('⏳ are submitting…');
         await savePin({anchor,pos,text:msg,scale:sc});
-        setScan('✅ 已提交，其他人也能看到','success');
+        setScan('✅ submitted, eotherelse can see','success');
         $msg.value='';
         vibrate(50);
         setTimeout(()=>{
           ['preview-','cursor-'].forEach(p=>{ const el=document.getElementById(p+anchor); if(el) el.remove(); });
-          $stat.textContent='就绪';
+          $stat.textContent='ready';
         }, 2000);
         CURRENT = { anchor:null, pos:null };
       }catch(err){
-        console.error(err); setScan('❌ 提交失败','error'); showPreview(anchor,pos,false);
+        console.error(err); setScan('❌ failed submitted','error'); showPreview(anchor,pos,false);
       }finally{
         setTimeout(()=>{ $btn.disabled=false; updateScanStatus(); }, 800);
       }
