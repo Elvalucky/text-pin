@@ -20,106 +20,65 @@
 
   <style>
     html, body { 
-      margin: 0; padding: 0; height: 100dvh; background: #000; overflow: hidden;
+      margin:0; padding:0; height:100dvh; background:#000; overflow:hidden;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; 
     }
 
-    #scanStatus {
-      position: fixed; top: 8px; left: 8px; z-index: 20; 
-      background: rgba(0,0,0,.75); color: #fff; padding: 8px 12px; 
-      border-radius: 12px; font-size: 13px; backdrop-filter: blur(8px);
+    #scanStatus{
+      position:fixed; top:8px; left:8px; z-index:20; background:rgba(0,0,0,.75);
+      color:#fff; padding:8px 12px; border-radius:12px; font-size:13px; backdrop-filter:blur(8px);
       transition: all 0.3s ease;
     }
-    #scanStatus.success { background: rgba(34,197,94,.9); }
-    #scanStatus.error { background: rgba(239,68,68,.9); }
+    #scanStatus.success{ background:rgba(34,197,94,.9); }
+    #scanStatus.error{ background:rgba(239,68,68,.9); }
     
-    #net { 
-      position: fixed; top: 8px; right: 8px; z-index: 20; 
-      background: rgba(0,0,0,.6); color: #fff; padding: 6px 10px; 
-      border-radius: 10px; font-size: 12px; 
+    #net{ 
+      position:fixed; top:8px; right:8px; z-index:20; background:rgba(0,0,0,.6);
+      color:#fff; padding:6px 10px; border-radius:10px; font-size:12px; 
     }
     
-    #debug {
-      position: fixed; top: 50px; left: 8px; z-index: 20; 
-      background: rgba(0,0,0,.6); color: #fff; padding: 6px 10px; 
-      border-radius: 10px; font-size: 11px; max-width: 280px; 
-      line-height: 1.35; white-space: pre-wrap; max-height: 150px; 
-      overflow-y: auto;
+    #debug{
+      position:fixed; top:50px; left:8px; z-index:20; background:rgba(0,0,0,.6);
+      color:#fff; padding:6px 10px; border-radius:10px; font-size:11px; max-width:280px; line-height:1.35;
+      white-space:pre-wrap; max-height:150px; overflow-y:auto;
     }
 
-    #ui {
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-      background: rgba(0,0,0,.75); color: #fff; 
-      padding: 10px 10px calc(12px + env(safe-area-inset-bottom));
-      box-shadow: 0 -8px 24px rgba(0,0,0,.25); backdrop-filter: blur(8px);
-      display: none; transition: all 0.3s ease;
+    #ui{
+      position:fixed; left:0; right:0; bottom:0; z-index:20;
+      background:rgba(0,0,0,.8); color:#fff; padding:12px 12px calc(16px + env(safe-area-inset-bottom));
+      box-shadow:0 -8px 24px rgba(0,0,0,.4); backdrop-filter:blur(12px);
+      display:none; border-radius: 16px 16px 0 0;
     }
-    
-    #ui form { 
-      display: grid; grid-template-columns: 1fr minmax(70px,110px) auto; 
-      gap: 8px; align-items: end; 
-    }
-    
-    #ui label { 
-      display: flex; flex-direction: column; font-size: 12px; opacity: .95; 
-    }
-    
-    #ui input { 
-      height: 36px; border-radius: 10px; border: 1px solid rgba(255,255,255,.25);
-      background: rgba(255,255,255,.1); color: #fff; padding: 6px 10px;
-      transition: all 0.2s ease;
-    }
-    
-    #ui input:focus {
-      border-color: rgba(77, 170, 221, 0.5);
-      background: rgba(255,255,255,.15);
-      outline: none;
-    }
-    
-    #ui button { 
-      height: 36px; border: none; border-radius: 10px; 
-      background: #4ad; color: #002; font-weight: 700; padding: 0 16px;
-      transition: all 0.2s ease; cursor: pointer;
-    }
-    
-    #ui button:hover:not(:disabled) { background: #3ac; transform: translateY(-1px); }
-    #ui button:disabled { opacity: 0.6; cursor: not-allowed; }
-    
-    #status { margin-top: 6px; font-size: 12px; opacity: .85; }
+    #ui form{ display:grid; grid-template-columns:1fr 80px auto; gap:10px; align-items:end; }
+    #ui label{ display:flex; flex-direction:column; font-size:12px; opacity:.9; gap:4px; }
+    #ui input{ height:40px; border-radius:12px; border:1px solid rgba(255,255,255,.3);
+      background:rgba(255,255,255,.15); color:#fff; padding:8px 12px; font-size:14px; transition: all 0.2s ease; }
+    #ui input:focus { outline:none; border-color:rgba(77,171,221,.8); background:rgba(255,255,255,.25); }
+    #ui button{ height:40px; border:none; border-radius:12px; background:#4ad; color:#002; 
+      font-weight:700; padding:0 18px; font-size:14px; transition: all 0.2s ease; cursor: pointer; }
+    #ui button:hover:not(:disabled) { background:#3bc; transform: translateY(-1px); }
+    #ui button:disabled { opacity:0.6; cursor: not-allowed; }
+    #status{ margin-top:8px; font-size:12px; opacity:.85; padding:6px 0; }
 
     /* 相机视频在底，WebGL 画布在上 */
-    video, #arjs-video, video#arjs-video {
-      position: fixed !important; top: 0 !important; left: 0 !important;
-      width: 100vw !important; height: 100vh !important; object-fit: cover !important;
-      z-index: 0 !important; background: #000 !important; 
-      display: block !important; visibility: visible !important; opacity: 1 !important;
+    video, #arjs-video, video#arjs-video{
+      position:fixed !important; top:0 !important; left:0 !important;
+      width:100vw !important; height:100vh !important; object-fit:cover !important;
+      z-index:0 !important; background:#000 !important; display:block !important; visibility:visible !important; opacity:1 !important;
     }
-    
-    canvas.a-canvas { 
-      position: fixed !important; top: 0 !important; left: 0 !important; 
-      z-index: 1 !important; background: transparent !important; 
-    }
+    canvas.a-canvas{ position:fixed !important; top:0 !important; left:0 !important; z-index:1 !important; background:transparent !important; }
 
-    .a-enter-vr-button, .a-enter-ar-button, .a-orientation-modal { 
-      display: none !important; 
-    }
-    
-    * { 
-      -webkit-touch-callout: none; -webkit-user-select: none; 
-      user-select: none; -webkit-tap-highlight-color: transparent; 
-    }
+    .a-enter-vr-button, .a-enter-ar-button, .a-orientation-modal{ display:none !important; }
+    *{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
 
     /* 开始按钮 */
     #startAR {
-      position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 30;
-      height: 48px; border: none; border-radius: 12px; 
-      background: #4ad; color: #002; font-weight: 800; font-size: 16px; 
-      box-shadow: 0 8px 24px rgba(0,0,0,.35); cursor: pointer;
-      transition: all 0.2s ease;
+      position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 30;
+      height: 52px; border: none; border-radius: 16px; background: linear-gradient(45deg, #4ad, #3bc);
+      color: #002; font-weight: 800; font-size: 17px; box-shadow: 0 8px 32px rgba(0,0,0,.4); cursor: pointer;
+      transition: all 0.3s ease;
     }
-    
-    #startAR:hover { background: #3ac; transform: translateY(-2px); }
-    #startAR:active { transform: translateY(0); }
+    #startAR:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,.5); }
   </style>
 </head>
 <body>
@@ -127,412 +86,272 @@
   <div id="net">🟢 在线</div>
   <div id="debug">等待启动…</div>
 
-  <button id="startAR">开始 AR</button>
+  <button id="startAR">🚀 开始 AR 体验</button>
 
   <a-scene id="scene" style="display:none"
            embedded vr-mode-ui="enabled:false"
-           renderer="alpha:true; colorManagement:true; physicallyCorrectLights:true; antialias:true">
-    
+           renderer="alpha:true; colorManagement:true; physicallyCorrectLights:true; antialias:true; sortObjects:true;">
     <a-entity light="type:ambient; intensity:0.8"></a-entity>
     <a-entity light="type:directional; intensity:0.9" position="0.5 1 0.5"></a-entity>
 
     <!-- Hiro Marker -->
-    <a-marker id="marker-hiro" preset="hiro" emitevents="true" smooth="true" 
-              smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
-      <!-- 投点平面（用于点击拾取） -->
-      <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0" 
-               material="opacity:0; transparent:true"></a-plane>
-      <!-- 中心指示柱（默认显示在标记中心稍上方） -->
-      <a-box id="indicator-hiro" position="0 0.12 0" width="0.15" height="0.24" depth="0.15"
-             material="color:#19d47d; opacity:0.9" 
-             animation="property: rotation; to: 0 360 0; loop: true; dur: 4000"></a-box>
+    <a-marker id="marker-hiro" preset="hiro" emitevents="true" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
+      <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0" material="opacity:0; transparent:true"></a-plane>
+      <!-- 小号中心指示柱（更小更不挡视线） -->
+      <a-box id="indicator-hiro" position="0 0.10 0" width="0.10" height="0.18" depth="0.10"
+             material="color:#19d47d; opacity:0.9"
+             animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
     </a-marker>
 
     <!-- Kanji Marker -->
-    <a-marker id="marker-kanji" preset="kanji" emitevents="true" smooth="true" 
-              smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
-      <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0" 
-               material="opacity:0; transparent:true"></a-plane>
-      <a-box id="indicator-kanji" position="0 0.12 0" width="0.15" height="0.24" depth="0.15"
+    <a-marker id="marker-kanji" preset="kanji" emitevents="true" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
+      <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0" material="opacity:0; transparent:true"></a-plane>
+      <a-box id="indicator-kanji" position="0 0.10 0" width="0.10" height="0.18" depth="0.10"
              material="color:#ffd166; opacity:0.9"
-             animation="property: rotation; to: 0 360 0; loop: true; dur: 4000"></a-box>
+             animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"></a-box>
     </a-marker>
 
     <!-- 光线拾取 -->
-    <a-entity id="mouse" cursor="rayOrigin: mouse" 
-              raycaster="objects: .dropzone; interval: 0"></a-entity>
+    <a-entity id="mouse" cursor="rayOrigin: mouse" raycaster="objects: .dropzone; interval: 0"></a-entity>
 
     <a-entity camera></a-entity>
   </a-scene>
 
   <div id="ui">
     <form id="form">
-      <label>Text
-        <input id="msg" placeholder="输入文本…" maxlength="80" />
+      <label>📝 文本内容
+        <input id="msg" placeholder="输入你要放置的文字..." maxlength="80" />
       </label>
-      <label>Scale
-        <input id="scale" type="number" step="0.1" value="1.0" min="0.1" max="3.0" inputmode="decimal" />
+      <label>📏 大小
+        <input id="scale" type="number" step="0.1" value="1.0" min="0.1" max="5" inputmode="decimal" />
       </label>
-      <button type="submit" id="submit">提交 / Pin</button>
+      <button type="submit" id="submit">✨ 放置</button>
     </form>
-    <div id="status">未选位置</div>
+    <div id="status">💡 先在标记内点击选择位置</div>
   </div>
 
   <script type="module">
     /******** 可调参数 ********/
-    const CONFIG = {
-      PREVIEW_DEFAULT_TEXT: 'hello',      // 未输入时，预览显示这个占位文字
-      USE_INDICATOR: true,                // 是否显示"小号斜柱"中心指示
-      INDICATOR_MODE: 'center',           // 'center' | 'follow' 斜柱显示在标记中心，或跟随点击
-      INDICATOR_HEIGHT_OFFSET: 0.12,      // 斜柱离平面的高度
-      DETECTION_THRESHOLD: 3,             // 连续检测到多少次才认为识别
-      DETECTION_TIMEOUT: 1500,            // 多少毫秒未检测到就认为丢失
-      POLL_INTERVAL: 150                  // 轮询间隔（毫秒）
-    };
+    const PREVIEW_DEFAULT_TEXT = 'Hello AR!';     // 未输入时的占位预览
+    const USE_INDICATOR = true;                   // 显示小号斜柱
+    const INDICATOR_MODE = 'center';              // 'center' | 'follow'
+    const INDICATOR_HEIGHT_OFFSET = 0.10;         // 斜柱离平面的高度（略调小）
 
-    /******** DOM & 状态管理 ********/
-    const DOM = {
-      scan: document.getElementById('scanStatus'),
-      net: document.getElementById('net'),
-      debug: document.getElementById('debug'),
-      scene: document.getElementById('scene'),
-      mouse: document.getElementById('mouse'),
-      form: document.getElementById('form'),
-      msg: document.getElementById('msg'),
-      scale: document.getElementById('scale'),
-      status: document.getElementById('status'),
-      btn: document.getElementById('submit'),
-      start: document.getElementById('startAR')
-    };
+    /******** DOM & 状态 ********/
+    const $scan = document.getElementById('scanStatus');
+    const $net  = document.getElementById('net');
+    const $debug= document.getElementById('debug');
+    const scene = document.getElementById('scene');
+    const mouse = document.getElementById('mouse');
+    const $form = document.getElementById('form');
+    const $msg  = document.getElementById('msg');
+    const $scale= document.getElementById('scale');
+    const $stat = document.getElementById('status');
+    const $btn  = document.getElementById('submit');
+    const $start= document.getElementById('startAR');
 
-    // 网络状态管理
-    const updateNetStatus = (online) => {
-      DOM.net.textContent = online ? '🟢 在线' : '🔴 离线';
-    };
-    updateNetStatus(navigator.onLine);
-    addEventListener('online', () => updateNetStatus(true));
-    addEventListener('offline', () => updateNetStatus(false));
+    const setNet  = on => $net.textContent = on ? '🟢 在线' : '🔴 离线';
+    const setDebug= txt => $debug.textContent = txt;
+    setNet(navigator.onLine); 
+    addEventListener('online',()=>setNet(true)); 
+    addEventListener('offline',()=>setNet(false));
 
-    // 调试信息更新
-    const updateDebug = (text) => {
-      DOM.debug.textContent = text;
-    };
+    const vibrate = (pattern=20)=>{ try{ navigator.vibrate && navigator.vibrate(pattern);}catch{} };
 
-    // 震动反馈
-    const vibrate = (duration = 20) => {
-      try {
-        navigator.vibrate && navigator.vibrate(duration);
-      } catch (e) {
-        // 忽略错误
-      }
-    };
+    // 扫描提示（节流）
+    let _scanTimer=null, _scanCache='';
+    function setScan(txt, cls=''){
+      if (txt===_scanCache) return;
+      clearTimeout(_scanTimer);
+      _scanTimer = setTimeout(()=>{
+        _scanCache = txt;
+        $scan.className = cls;
+        $scan.textContent = txt;
+      }, 50);
+    }
 
-    // 扫描状态更新（节流）
-    let scanTimer = null;
-    let scanCache = '';
-    const updateScanStatus = (text, className = '') => {
-      if (text === scanCache) return;
-      clearTimeout(scanTimer);
-      scanTimer = setTimeout(() => {
-        scanCache = text;
-        DOM.scan.className = className;
-        DOM.scan.textContent = text;
-      }, 100);
-    };
-
-    /******** AR 启动管理 ********/
-    const AR_CONFIG = `
+    /******** 启动 AR（先申请相机权限，释放，再交给 AR.js） ********/
+    const ARJS_ATTR = `
       sourceType: webcam;
       videoTexture: false;
       detectionMode: mono;
       sourceWidth: 1280;
       sourceHeight: 720;
       maxDetectionRate: 60;
-      debugUIEnabled: false
+      debugUIEnabled: false;
+      patternRatio: 0.8
     `;
-
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
 
-    const forceVideoVisible = () => {
+    function forceVideoVisible(){
       const videos = document.querySelectorAll('video');
-      videos.forEach(video => {
-        video.setAttribute('playsinline', 'true');
-        video.setAttribute('webkit-playsinline', 'true');
-        video.muted = true;
-        video.style.display = 'block';
-        video.style.visibility = 'visible';
-        video.style.opacity = '1';
+      videos.forEach(v=>{
+        v.setAttribute('playsinline','true'); v.setAttribute('webkit-playsinline','true'); v.muted = true;
+        v.style.display='block'; v.style.visibility='visible'; v.style.opacity='1'; v.style.zIndex='0';
       });
-      
-      const canvas = document.querySelector('.a-canvas');
-      if (canvas) {
-        canvas.style.zIndex = '1';
-        canvas.style.background = 'transparent';
-      }
-    };
+      const canvas = document.querySelector('.a-canvas'); 
+      if(canvas){ canvas.style.zIndex='1'; canvas.style.background='transparent'; }
+    }
 
-    DOM.start.addEventListener('click', async () => {
+    $start.addEventListener('click', async () => {
       try {
-        updateScanStatus('📷 正在请求相机权限…');
-        
-        // 请求相机权限
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
+        setScan('📷 正在请求相机权限...');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }
         });
-        stream.getTracks().forEach(track => track.stop());
-        await new Promise(resolve => setTimeout(resolve, 300));
+        stream.getTracks().forEach(t=>t.stop());
+        await new Promise(r=>setTimeout(r,300));
 
-        // 启动 AR
-        DOM.scene.setAttribute('arjs', AR_CONFIG);
-        DOM.scene.style.display = 'block';
-        DOM.start.style.display = 'none';
+        scene.setAttribute('arjs', ARJS_ATTR);
+        scene.style.display = 'block';
+        $start.style.display = 'none';
         document.getElementById('ui').style.display = 'block';
-        
-        updateScanStatus('🔎 正在扫描 Hiro / Kanji…');
+        setScan('🔎 正在扫描 Hiro / Kanji 标记...');
 
         setTimeout(forceVideoVisible, 600);
-        if (isIOS) {
-          [1500, 3000, 5000].forEach(delay => 
-            setTimeout(forceVideoVisible, delay)
-          );
-        }
-      } catch (error) {
-        console.error('AR启动失败:', error);
-        updateScanStatus('❌ 需要摄像头权限才能使用 AR', 'error');
-        alert('需要相机权限才能使用 AR');
+        if (isIOS || isAndroid) [1000,2000,3000,5000].forEach(t=>setTimeout(forceVideoVisible, t));
+        vibrate([100,50,100]);
+      } catch (e) {
+        console.error('Camera access error:', e);
+        setScan('❌ 需要摄像头权限才能使用 AR', 'error');
+        alert('需要相机权限才能使用 AR 功能，请在浏览器设置中允许访问摄像头。');
       }
     });
 
-    /******** 标记识别状态管理 ********/
+    /******** 识别状态管理（事件 + 轮询） ********/
     const markerState = {
-      hiro: { detected: false, lastSeen: 0, consecutiveVisible: 0, lastClickPos: null },
-      kanji: { detected: false, lastSeen: 0, consecutiveVisible: 0, lastClickPos: null }
+      hiro:  { detected:false, lastSeen:0, consecutiveVisible:0, lastClickPos:null },
+      kanji: { detected:false, lastSeen:0, consecutiveVisible:0, lastClickPos:null }
+    };
+    const hiro  = document.getElementById('marker-hiro');
+    const kanji = document.getElementById('marker-kanji');
+
+    const updateScanStatus = () => {
+      const active = Object.entries(markerState).filter(([_,s])=>s.detected).map(([n])=>n[0].toUpperCase()+n.slice(1));
+      if (active.length>0) setScan(`✅ 已识别 ${active.join(' / ')} 标记，点击标记表面选择位置`, 'success');
+      else setScan('🔎 正在扫描 Hiro / Kanji 标记...');
     };
 
-    const markers = {
-      hiro: document.getElementById('marker-hiro'),
-      kanji: document.getElementById('marker-kanji')
-    };
+    function onMarkerFound(name){
+      const key = name.toLowerCase(); const s = markerState[key];
+      if (!s.detected){ s.detected=true; vibrate(15); setScan(`✅ 已识别 ${name} 标记，请在标记内轻点选择位置`, 'success'); }
+      s.lastSeen = Date.now(); s.consecutiveVisible++; updateScanStatus();
+    }
+    function onMarkerLost(name){
+      const key = name.toLowerCase(); const s = markerState[key];
+      if (s.detected){ s.detected=false; s.consecutiveVisible=0; updateScanStatus(); }
+    }
+    hiro.addEventListener('markerFound', ()=>onMarkerFound('Hiro'));
+    kanji.addEventListener('markerFound', ()=>onMarkerFound('Kanji'));
+    hiro.addEventListener('markerLost',  ()=>onMarkerLost('Hiro'));
+    kanji.addEventListener('markerLost',  ()=>onMarkerLost('Kanji'));
 
-    const updateOverallScanStatus = () => {
-      const activeMarkers = Object.entries(markerState)
-        .filter(([_, state]) => state.detected)
-        .map(([name]) => name.charAt(0).toUpperCase() + name.slice(1));
-        
-      if (activeMarkers.length > 0) {
-        updateScanStatus(`✅ 已识别 ${activeMarkers.join(' / ')}，可点选放置`, 'success');
-      } else {
-        updateScanStatus('🔎 正在扫描 Hiro / Kanji…');
-      }
-    };
-
-    const onMarkerFound = (name) => {
-      const key = name.toLowerCase();
-      const state = markerState[key];
-      
-      if (!state.detected) {
-        state.detected = true;
-        vibrate(15);
-        updateScanStatus(`✅ 已识别 ${name}，请在标记内轻点选择位置`, 'success');
-      }
-      
-      state.lastSeen = Date.now();
-      state.consecutiveVisible++;
-      updateOverallScanStatus();
-    };
-
-    const onMarkerLost = (name) => {
-      const key = name.toLowerCase();
-      const state = markerState[key];
-      
-      if (state.detected) {
-        state.detected = false;
-        state.consecutiveVisible = 0;
-        updateOverallScanStatus();
-      }
-    };
-
-    // 绑定标记事件
-    markers.hiro.addEventListener('markerFound', () => onMarkerFound('Hiro'));
-    markers.kanji.addEventListener('markerFound', () => onMarkerFound('Kanji'));
-    markers.hiro.addEventListener('markerLost', () => onMarkerLost('Hiro'));
-    markers.kanji.addEventListener('markerLost', () => onMarkerLost('Kanji'));
-
-    // 轮询检测（增强稳定性）
-    let pollCount = 0;
-    setInterval(() => {
+    // 轮询增强
+    let pollCount=0; const DETECTION_THRESHOLD=3, LOSS_TIMEOUT=1500;
+    setInterval(()=>{
       pollCount++;
-      const now = Date.now();
-      
-      const visibility = {
-        hiro: !!(markers.hiro.object3D && markers.hiro.object3D.visible),
-        kanji: !!(markers.kanji.object3D && markers.kanji.object3D.visible)
-      };
-
-      ['hiro', 'kanji'].forEach(name => {
-        const state = markerState[name];
-        
-        if (visibility[name]) {
-          state.lastSeen = now;
-          state.consecutiveVisible++;
-          
-          if (!state.detected && state.consecutiveVisible >= CONFIG.DETECTION_THRESHOLD) {
-            onMarkerFound(name.charAt(0).toUpperCase() + name.slice(1));
-          }
-        } else {
-          state.consecutiveVisible = 0;
-          
-          if (state.detected && now - state.lastSeen > CONFIG.DETECTION_TIMEOUT) {
-            onMarkerLost(name.charAt(0).toUpperCase() + name.slice(1));
-          }
-        }
+      const now=Date.now();
+      const vis={ hiro:!!(hiro.object3D&&hiro.object3D.visible), kanji:!!(kanji.object3D&&kanji.object3D.visible) };
+      ['hiro','kanji'].forEach(name=>{
+        const s=markerState[name]; const cap=name[0].toUpperCase()+name.slice(1);
+        if (vis[name]){ s.lastSeen=now; s.consecutiveVisible++; if(!s.detected && s.consecutiveVisible>=DETECTION_THRESHOLD) onMarkerFound(cap); }
+        else{ s.consecutiveVisible=0; if(s.detected && now-s.lastSeen>LOSS_TIMEOUT) onMarkerLost(cap); }
       });
+      setDebug(`轮询:${pollCount}
+Hiro: ${vis.hiro?'✅可见':'❌隐藏'} (连${markerState.hiro.consecutiveVisible}) ${markerState.hiro.detected?'已识别':'未识别'}
+Kanji:${vis.kanji?'✅可见':'❌隐藏'} (连${markerState.kanji.consecutiveVisible}) ${markerState.kanji.detected?'已识别':'未识别'}`);
+    },150);
 
-      updateDebug(`轮询: ${pollCount}
-Hiro: ${visibility.hiro ? '✅可见' : '❌隐藏'} (连续${markerState.hiro.consecutiveVisible}) 状态: ${markerState.hiro.detected ? '已识别' : '未识别'}
-Kanji: ${visibility.kanji ? '✅可见' : '❌隐藏'} (连续${markerState.kanji.consecutiveVisible}) 状态: ${markerState.kanji.detected ? '已识别' : '未识别'}`);
-    }, CONFIG.POLL_INTERVAL);
+    /******** 预览（圆环 + 文本） & 小号斜柱 ********/
+    const USER_ID = 'user_' + Math.random().toString(36).slice(2,10);
+    let CURRENT_SELECTION = { anchor:null, pos:null };
 
-    /******** 预览与交互管理 ********/
-    const USER_ID = 'user_' + Math.random().toString(36).slice(2, 8);
-    let currentSelection = { anchor: null, position: null };
+    const findMarkerElement = el => { let p=el; while(p&&p.tagName){ if(p.tagName.toLowerCase()==='a-marker') return p; p=p.parentEl; } return null; };
+    const round2 = n => Math.round(n*100)/100;
+    const normalizePosition = (x,y,z)=>[round2(x), Math.max(round2(y),0)+0.001, round2(z)];
+    const getPreviewText = ()=> ($msg.value.trim() || PREVIEW_DEFAULT_TEXT);
 
-    // 工具函数
-    const findMarkerElement = (element) => {
-      let parent = element;
-      while (parent && parent.tagName) {
-        if (parent.tagName.toLowerCase() === 'a-marker') return parent;
-        parent = parent.parentEl;
+    function ensureIndicatorPosition(anchor){
+      if (!USE_INDICATOR) return;
+      const box=document.getElementById(`indicator-${anchor}`);
+      if (!box) return;
+      if (INDICATOR_MODE==='center'){
+        box.setAttribute('position', `0 ${INDICATOR_HEIGHT_OFFSET} 0`);
       }
-      return null;
-    };
+    }
 
-    const round2 = (n) => Math.round(n * 100) / 100;
-    const normalizePosition = (x, y, z) => [round2(x), Math.max(round2(y), 0) + 0.001, round2(z)];
-    const getPreviewText = () => DOM.msg.value.trim() || CONFIG.PREVIEW_DEFAULT_TEXT;
+    function showPreview(anchor, pos, confirmed=false){
+      const parent=document.getElementById(`marker-${anchor}`); if(!parent) return;
 
-    // 指示器位置更新
-    const updateIndicatorPosition = (anchor) => {
-      if (!CONFIG.USE_INDICATOR) return;
-      
-      const indicator = document.getElementById(`indicator-${anchor}`);
-      if (!indicator) return;
-      
-      if (CONFIG.INDICATOR_MODE === 'center') {
-        indicator.setAttribute('position', `0 ${CONFIG.INDICATOR_HEIGHT_OFFSET} 0`);
+      // 圆环
+      let ring=document.getElementById(`cursor-${anchor}`);
+      if(!ring){ ring=document.createElement('a-entity'); ring.id=`cursor-${anchor}`; parent.appendChild(ring); }
+      ring.setAttribute('rotation','-90 0 0');
+      ring.setAttribute('geometry', confirmed? 'primitive:ring; radiusInner:0.018; radiusOuter:0.028' : 'primitive:ring; radiusInner:0.012; radiusOuter:0.022');
+      ring.setAttribute('material', confirmed? 'color:#00FF00; opacity:1' : 'color:#FFD166; opacity:0.9');
+      if (confirmed) ring.setAttribute('animation','property: scale; to:1.2 1.2 1.2; direction:alternate; loop:true; dur:800');
+      else ring.removeAttribute('animation');
+      ring.setAttribute('position', `${pos[0]} ${pos[1]} ${pos[2]}`);
+
+      // 预览文本
+      let txt=document.getElementById(`preview-${anchor}`);
+      if(!txt){ txt=document.createElement('a-entity'); txt.id=`preview-${anchor}`; parent.appendChild(txt); }
+      const base = anchor==='hiro' ? '#90EE90' : '#FFD166';
+      const color= confirmed ? '#00FF00' : base;
+      const s = parseFloat($scale.value||'1')||1;
+      txt.setAttribute('rotation','-90 0 0');
+      txt.setAttribute('text', `value:${confirmed?'✓ ':''}${getPreviewText()}; align:center; width:1.8; color:${color}; wrapCount:24`);
+      txt.setAttribute('material','opacity:0.9; transparent:true');
+      txt.setAttribute('scale', `${s} ${s} ${s}`);
+      txt.setAttribute('position', `${pos[0]} ${pos[1]} ${pos[2]}`);
+
+      // 斜柱跟随
+      if (USE_INDICATOR && INDICATOR_MODE==='follow'){
+        const ind=document.getElementById(`indicator-${anchor}`);
+        if (ind) ind.setAttribute('position', `${pos[0]} ${pos[1]+INDICATOR_HEIGHT_OFFSET} ${pos[2]}`);
       }
-      // follow 模式会在点击时更新位置
-    };
+    }
 
-    // 预览显示
-    const showPreview = (anchor, position, confirmed = false) => {
-      const parent = document.getElementById(`marker-${anchor}`);
-      if (!parent) return;
+    // 点击拾取
+    scene.addEventListener('click', ()=>{
+      const rc = mouse.components.raycaster;
+      if(!rc || !rc.intersections?.length) return;
+      const hit = rc.intersections[0];
+      if(!hit.object?.el?.classList?.contains('dropzone')) return;
 
-      // 圆环指示器
-      let cursor = document.getElementById(`cursor-${anchor}`);
-      if (!cursor) {
-        cursor = document.createElement('a-entity');
-        cursor.id = `cursor-${anchor}`;
-        parent.appendChild(cursor);
-      }
-      
-      cursor.setAttribute('rotation', '-90 0 0');
-      cursor.setAttribute('geometry', confirmed ? 
-        'primitive:ring; radiusInner:0.015; radiusOuter:0.025' : 
-        'primitive:ring; radiusInner:0.012; radiusOuter:0.02'
-      );
-      cursor.setAttribute('material', confirmed ? 
-        'color:#00FF00; opacity:1' : 
-        'color:#FFD166; opacity:.95'
-      );
-      cursor.setAttribute('position', `${position[0]} ${position[1]} ${position[2]}`);
-
-      // 文字预览
-      let preview = document.getElementById(`preview-${anchor}`);
-      if (!preview) {
-        preview = document.createElement('a-entity');
-        preview.id = `preview-${anchor}`;
-        parent.appendChild(preview);
-      }
-      
-      const baseColor = anchor === 'hiro' ? '#90EE90' : '#FFD166';
-      const textColor = confirmed ? '#00FF00' : baseColor;
-      const scale = parseFloat(DOM.scale.value || '1') || 1;
-      
-      preview.setAttribute('rotation', '-90 0 0');
-      preview.setAttribute('text', 
-        `value:${confirmed ? '✓ ' : ''}${getPreviewText()}; align:center; width:1.8; color:${textColor}; wrapCount:24`
-      );
-      preview.setAttribute('material', 'opacity:.9; transparent:true');
-      preview.setAttribute('scale', `${scale} ${scale} ${scale}`);
-      preview.setAttribute('position', `${position[0]} ${position[1]} ${position[2]}`);
-
-      // 跟随模式下更新指示器位置
-      if (CONFIG.USE_INDICATOR && CONFIG.INDICATOR_MODE === 'follow') {
-        const indicator = document.getElementById(`indicator-${anchor}`);
-        if (indicator) {
-          indicator.setAttribute('position', 
-            `${position[0]} ${position[1] + CONFIG.INDICATOR_HEIGHT_OFFSET} ${position[2]}`
-          );
-        }
-      }
-    };
-
-    // 点击事件处理
-    DOM.scene.addEventListener('click', () => {
-      const raycaster = DOM.mouse.components.raycaster;
-      if (!raycaster || !raycaster.intersections?.length) return;
-      
-      const hit = raycaster.intersections[0];
-      if (!hit.object?.el?.classList?.contains('dropzone')) return;
-
-      const marker = findMarkerElement(hit.object.el);
-      if (!marker) return;
-      
-      if (!marker.object3D?.visible) {
-        updateScanStatus('⚠️ 标记未被稳定识别，请把整张标记放入取景框', 'error');
-        setTimeout(updateOverallScanStatus, 1200);
+      const markerEl = findMarkerElement(hit.object.el); if(!markerEl) return;
+      if (!markerEl.object3D?.visible){
+        setScan('⚠️ 标记未被稳定识别，请确保整张标记在取景框内', 'error');
+        setTimeout(updateScanStatus, 1200);
         return;
       }
 
-      const anchor = (marker.id === 'marker-hiro') ? 'hiro' : 'kanji';
-      const localPosition = marker.object3D.worldToLocal(hit.point.clone());
-      const position = normalizePosition(localPosition.x, localPosition.y, localPosition.z);
+      const anchor = markerEl.id==='marker-hiro' ? 'hiro' : 'kanji';
+      const local = markerEl.object3D.worldToLocal(hit.point.clone());
+      const pos = normalizePosition(local.x, local.y, local.z);
 
-      markerState[anchor].lastClickPos = position;
-      currentSelection = { anchor, position };
-      
-      DOM.status.textContent = `已选：${anchor} (${position.map(n => n.toFixed(2)).join(', ')})`;
-      updateScanStatus('✅ 位置已选：可在下方输入文字并提交', 'success');
-      
-      showPreview(anchor, position);
+      markerState[anchor].lastClickPos = pos;
+      CURRENT_SELECTION = { anchor, pos };
+      $stat.textContent = `📍 已选位置：${anchor.toUpperCase()} (${pos.map(n=>n.toFixed(2)).join(', ')})`;
+      setScan('✅ 位置已选中，请在下方输入文字内容', 'success');
+      showPreview(anchor, pos);
       vibrate(30);
     });
 
-    // 输入框实时预览
-    DOM.msg.addEventListener('input', () => {
-      if (!currentSelection.anchor || !currentSelection.position) return;
-      showPreview(currentSelection.anchor, currentSelection.position);
-    });
+    // 输入与缩放时实时预览
+    $msg.addEventListener('input', ()=>{ if(CURRENT_SELECTION.anchor) showPreview(CURRENT_SELECTION.anchor, CURRENT_SELECTION.pos); });
+    $scale.addEventListener('input', ()=>{ if(CURRENT_SELECTION.anchor) showPreview(CURRENT_SELECTION.anchor, CURRENT_SELECTION.pos); });
 
-    DOM.scale.addEventListener('input', () => {
-      if (!currentSelection.anchor || !currentSelection.position) return;
-      showPreview(currentSelection.anchor, currentSelection.position);
-    });
-
-    // 标记识别时初始化指示器
-    ['hiro', 'kanji'].forEach(anchor => {
-      const element = document.getElementById(`marker-${anchor}`);
-      element.addEventListener('markerFound', () => updateIndicatorPosition(anchor));
+    // 标记出现时，安放中心斜柱
+    ['hiro','kanji'].forEach(a=>{
+      document.getElementById(`marker-${a}`).addEventListener('markerFound', ()=>ensureIndicatorPosition(a));
     });
 
     /******** Firebase 实时同步 ********/
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { 
-      getFirestore, collection, addDoc, onSnapshot, 
-      orderBy, query, serverTimestamp 
-    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, orderBy, query, serverTimestamp }
+      from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBYsPxSPvpv8mPQdVGJuzE2TKZ0qY6e608",
@@ -542,134 +361,92 @@ Kanji: ${visibility.kanji ? '✅可见' : '❌隐藏'} (连续${markerState.kanj
       messagingSenderId: "68968164615",
       appId: "1:68968164615:web:c56d3c17046ff51ebf29a2"
     };
-
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const db  = getFirestore(app);
     const pinsCollection = collection(db, "pins");
 
-    // 实时监听数据变化
-    const pinsQuery = query(pinsCollection, orderBy('ts', 'asc'));
-    onSnapshot(pinsQuery, (snapshot) => {
-      snapshot.docChanges().forEach(change => {
-        const data = change.doc.data();
-        if (data.mode !== 'arjs') return;
+    // 监听云端 pin
+    const pinsQuery = query(pinsCollection, orderBy('ts','asc'));
+    onSnapshot(pinsQuery, (snapshot)=>{
+      snapshot.docChanges().forEach(change=>{
+        const d = change.doc.data();
+        if (d.mode !== 'arjs') return;
 
-        const anchor = (data.anchor === 'kanji') ? 'kanji' : 'hiro';
-        const parent = document.getElementById(`marker-${anchor}`);
+        const anchor = d.anchor === 'kanji' ? 'kanji' : 'hiro';
+        const parent = document.getElementById(`marker-${anchor}`); 
         if (!parent) return;
 
-        if (change.type === 'removed') {
-          const oldElement = document.getElementById(`pin-${change.doc.id}`);
-          if (oldElement) oldElement.remove();
+        if (change.type === 'removed'){
+          const old = document.getElementById(`pin-${change.doc.id}`); 
+          if (old) old.remove(); 
           return;
         }
 
-        let element = document.getElementById(`pin-${change.doc.id}`);
-        if (!element) {
-          element = document.createElement('a-entity');
-          element.id = `pin-${change.doc.id}`;
-          parent.appendChild(element);
-        }
+        let el = document.getElementById(`pin-${change.doc.id}`);
+        if (!el){ el = document.createElement('a-entity'); el.id=`pin-${change.doc.id}`; parent.appendChild(el); }
 
-        const [x, y, z] = data.pos || [0, 0, 0];
-        element.setAttribute('position', `${x} ${y} ${z}`);
+        const [x,y,z] = d.pos || [0,0,0];
+        el.setAttribute('position', `${x} ${y} ${z}`);
 
-        if (data.modelUrl) {
-          element.removeAttribute('text');
-          const scale = data.scale || 1;
-          element.setAttribute('gltf-model', data.modelUrl);
-          element.setAttribute('scale', `${scale} ${scale} ${scale}`);
+        if (d.modelUrl){
+          el.removeAttribute('text');
+          const s = d.scale || 1;
+          el.setAttribute('gltf-model', d.modelUrl);
+          el.setAttribute('scale', `${s} ${s} ${s}`);
         } else {
-          const isOwn = data.userId === USER_ID;
-          const baseColor = anchor === 'hiro' ? '#90EE90' : '#FFD166';
-          const textColor = isOwn ? baseColor : '#ccc';
-          const scale = data.scale || 1;
+          const mine  = d.userId === USER_ID;
+          const base  = anchor==='hiro' ? '#90EE90' : '#FFD166';
+          const color = mine ? base : '#ccc';
+          const s     = d.scale || 1;
 
-          element.setAttribute('rotation', '-90 0 0');
-          element.setAttribute('text', 
-            `value:${data.text || ''}; align:center; width:1.8; color:${textColor}; wrapCount:24`
-          );
-          element.setAttribute('scale', `${scale} ${scale} ${scale}`);
+          el.setAttribute('rotation', '-90 0 0');  // 让文本贴在平面
+          el.setAttribute('text', `value:${d.text||''}; align:center; width:1.8; color:${color}; wrapCount:24`);
+          el.setAttribute('scale', `${s} ${s} ${s}`);
         }
       });
     });
 
-    // 保存数据到 Firebase
-    const savePin = async ({ anchor, position, text, scale }) => {
+    async function savePin({anchor,pos,text,scale}){
       return await addDoc(pinsCollection, {
-        mode: 'arjs',
-        anchor,
-        pos: position,
-        text,
-        scale,
-        userId: USER_ID,
-        ts: serverTimestamp()
+        mode:'arjs', anchor, pos, text, scale, userId: USER_ID, ts: serverTimestamp()
       });
-    };
+    }
 
-    // 表单提交处理
-    DOM.form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      
-      const text = DOM.msg.value.trim();
-      const scale = parseFloat(DOM.scale.value || '1') || 1;
-      
-      if (!text) {
-        alert('请输入文本');
-        return;
-      }
-      
-      if (!currentSelection.position) {
-        alert('请先在标记内点击选择位置');
-        return;
-      }
-      
-      if (!navigator.onLine) {
-        alert('离线状态，无法提交');
-        return;
-      }
+    $form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const msg = ($msg.value||'').trim();
+      const sc  = parseFloat($scale.value||'1')||1;
+      if(!msg) return alert('请输入文本');
+      if(!CURRENT_SELECTION.pos) return alert('请先在标记内点击选择位置');
+      if(!navigator.onLine) return alert('当前离线，无法提交');
 
-      const { anchor, position } = currentSelection;
-      
-      try {
-        DOM.btn.disabled = true;
-        showPreview(anchor, position, true);
-        updateScanStatus('⏳ 正在提交…');
-        
-        await savePin({ anchor, position, text, scale });
-        
-        updateScanStatus('✅ 已提交，其他人也能看到', 'success');
-        DOM.msg.value = '';
+      const {anchor,pos} = CURRENT_SELECTION;
+      try{
+        $btn.disabled = true;
+        showPreview(anchor,pos,true);
+        setScan('⏳ 正在提交…');
+        await savePin({anchor,pos,text:msg,scale:sc});
+        setScan('✅ 已提交，其他人也能看到','success');
+        $msg.value='';
         vibrate(40);
-        
-        setTimeout(() => {
-          // 清理预览元素
-          ['preview-', 'cursor-'].forEach(prefix => {
-            const element = document.getElementById(prefix + anchor);
-            if (element) element.remove();
-          });
-          DOM.status.textContent = '就绪';
+        setTimeout(()=>{
+          ['preview-','cursor-'].forEach(p=>{ const el=document.getElementById(p+anchor); if(el) el.remove(); });
+          $stat.textContent='就绪';
         }, 1600);
-        
-        currentSelection = { anchor: null, position: null };
-      } catch (error) {
-        console.error('提交失败:', error);
-        updateScanStatus('❌ 提交失败', 'error');
-        showPreview(anchor, position, false);
-      } finally {
-        setTimeout(() => {
-          DOM.btn.disabled = false;
-          updateOverallScanStatus();
-        }, 800);
+        CURRENT_SELECTION = { anchor:null, pos:null };
+      }catch(err){
+        console.error(err);
+        setScan('❌ 提交失败','error');
+        if (CURRENT_SELECTION.anchor && CURRENT_SELECTION.pos){
+          showPreview(CURRENT_SELECTION.anchor, CURRENT_SELECTION.pos, false);
+        }
+      }finally{
+        setTimeout(()=>{ $btn.disabled=false; updateScanStatus(); }, 800);
       }
     });
 
-    // 页面可见性变化时强制显示视频
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
-        setTimeout(forceVideoVisible, 400);
-      }
-    });
+    // 回前台时补一次可见性修复
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) setTimeout(forceVideoVisible, 400); });
   </script>
 </body>
 </html>
