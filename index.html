@@ -1,1 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>AR.js Marker Scan Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <!-- 更新后的CDN链接 -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.3/aframe/build/aframe-ar.js"></script>
+  
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100dvh;
+      background: transparent;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
 
+    /* 防止意外缩放和选择 */
+    * {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* 状态指示器 */
+    #scanStatus {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      backdrop-filter: blur(8px);
+      transition: all 0.3s ease;
+      max-width: calc(100vw - 32px);
+      box-sizing: border-box;
+    }
+
+    #scanStatus.success {
+      background: rgba(34, 197, 94, 0.8);
+    }
+
+    #scanStatus.error {
+      background: rgba(239, 68, 68, 0.8);
+    }
+
+    #scanStatus.loading {
+      background: rgba(59, 130, 246, 0.8);
+    }
+
+    /* 加载动画 */
+    .loading-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 兼容性警告 */
+    #compatibilityWarning {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      max-width: 300px;
+      display: none;
+    }
+
+    /* 权限请求提示 */
+    #permissionPrompt {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      text-align: center;
+      display: none;
+      backdrop-filter: blur(8px);
+    }
+
+    /* 隐藏A-Frame的VR按钮和默认UI */
+    .a-enter-vr-button,
+    .a-enter-ar-button,
+    .a-orientation-modal {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- 状态提示 -->
+  <div id="scanStatus" class="loading">
+    <span class="loading-spinner"></span>初始化AR系统...
+  </div>
+
+  <!-- 兼容性警告 -->
+  <div id="compatibilityWarning">
+    <h3>⚠️ 设备不兼容</h3>
+    <p id="compatibilityMessage"></p>
+    <button onclick="hideCompatibilityWarning()" style="
+      background: #4CAF50; 
+      color: white; 
+      border: none; 
+      padding: 8px 16px; 
+      border-radius: 6px; 
+      margin-top: 10px;
+      cursor: pointer;
+    ">知道了</button>
+  </div>
+
+  <!-- 权限请求提示 -->
+  <div id="permissionPrompt">
+    <p>📷 需要摄像头权限才能使用AR功能，请点击"允许"</p>
+  </div>
+
+  <!-- AR.js 场景 -->
+  <a-scene
+    id="arScene"
+    embedded
+    vr-mode-ui="enabled: false"
+    renderer="alpha: true; colorManagement: true; physicallyCorrectLights: true; antialias: true"
+    arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false; trackingMethod: best; maxDetectionRate: 60; canvasWidth: 640; canvasHeight: 480"
+    style="display: none;">
+    
+    <!-- 环境光和方向光 -->
+    <a-entity light="type: ambient; intensity: 0.6"></a-entity>
+    <a-entity light="type: directional; intensity: 0.8" position="0.5 1 0.5"></a-entity>
+    
+    <!-- Hiro marker -->
+    <a-marker id="marker-hiro" preset="hiro">
+      <a-box 
+        position="0 0.5 0" 
+        material="color: #ff4444; roughness: 0.3; metalness: 0.1" 
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 4000"
+        shadow="cast: true">
+      </a-box>
+      <a-text 
+        value="HIRO" 
+        position="0 1.2 0" 
+        align="center" 
+        color="#ffffff" 
+        scale="2 2 2">
+      </a-text>
+    </a-marker>
+    
+    <!-- Kanji marker -->
+    <a-marker id="marker-kanji" preset="kanji">
+      <a-sphere 
+        position="0 0.5 0" 
+        radius="0.5" 
+        material="color: #4444ff; roughness: 0.2; metalness: 0.2"
+        animation="property: scale; to: 1.2 1.2 1.2; direction: alternate; loop: true; dur: 2000"
+        shadow="cast: true">
+      </a-sphere>
+      <a-text 
+        value="KANJI" 
+        position="0 1.2 0" 
+        align="center" 
+        color="#ffffff" 
+        scale="2 2 2">
+      </a-text>
+    </a-marker>
+    
+    <!-- 摄像机 -->
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script>
+    // 全局变量
+    const badge = document.getElementById('scanStatus');
+    const scene = document.getElementById('arScene');
+    const compatibilityWarning = document.getElementById('compatibilityWarning');
+    const permissionPrompt = document.getElementById('permissionPrompt');
+    
+    let isInitialized = false;
+    let markersFound = new Set();
+
+    // 工具函数：防抖
+    function debounce(func, delay) {
+      let timeoutId;
+      return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func(...args), delay);
+      };
+    }
+
+    // 工具函数：安全的震动反馈
+    function vibrate(duration = 50) {
+      try {
+        if (navigator.vibrate && typeof navigator.vibrate === 'function') {
+          navigator.vibrate(duration);
+        }
+      } catch (e) {
+        console.warn('振动API不可用:', e);
+      }
+    }
+
+    // 兼容性检查
+    function checkCompatibility() {
+      const issues = [];
+      
+      // 检查WebGL支持
+      if (!window.WebGLRenderingContext) {
+        issues.push('WebGL不支持 - AR功能需要硬件加速');
+      }
+      
+      // 检查摄像头API
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        issues.push('摄像头API不支持 - 无法访问相机');
+      }
+      
+      // 检查基础Web API
+      if (!window.requestAnimationFrame) {
+        issues.push('动画API不支持 - 性能可能受影响');
+      }
+
+      // 检查HTTPS（摄像头权限要求）
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+        issues.push('需要HTTPS连接才能访问摄像头');
+      }
+      
+      return issues;
+    }
+
+    // 显示兼容性警告
+    function showCompatibilityWarning(issues) {
+      const message = issues.join('\n• ');
+      document.getElementById('compatibilityMessage').textContent = '检测到以下问题：\n• ' + message;
+      compatibilityWarning.style.display = 'block';
+    }
+
+    // 隐藏兼容性警告
+    function hideCompatibilityWarning() {
+      compatibilityWarning.style.display = 'none';
+    }
+
+    // 更新状态显示
+    function updateStatus(message, type = 'default') {
+      badge.className = type;
+      
+      if (type === 'loading') {
+        badge.innerHTML = `<span class="loading-spinner"></span>${message}`;
+      } else {
+        badge.textContent = message;
+      }
+    }
+
+    // 标记找到处理
+    const handleMarkerFound = debounce((name) => {
+      markersFound.add(name);
+      updateStatus(`✅ 已识别 ${name} 标记`, 'success');
+      vibrate(30);
+    }, 100);
+
+    // 标记丢失处理
+    const handleMarkerLost = debounce(() => {
+      if (markersFound.size === 0) {
+        updateStatus('🔎 请将摄像头对准 Hiro 或 Kanji 标记', 'default');
+      }
+    }, 200);
+
+    // AR.js 事件处理
+    function setupAREvents() {
+      const hiro = document.getElementById('marker-hiro');
+      const kanji = document.getElementById('marker-kanji');
+      
+      if (!hiro || !kanji) {
+        console.error('标记元素未找到');
+        return;
+      }
+
+      // 标记事件监听
+      hiro.addEventListener('markerFound', () => handleMarkerFound('Hiro'));
+      kanji.addEventListener('markerFound', () => handleMarkerFound('Kanji'));
+      
+      hiro.addEventListener('markerLost', () => {
+        markersFound.delete('Hiro');
+        handleMarkerLost();
+      });
+      
+      kanji.addEventListener('markerLost', () => {
+        markersFound.delete('Kanji');
+        handleMarkerLost();
+      });
+    }
+
+    // 初始化AR系统
+    async function initializeAR() {
+      try {
+        updateStatus('正在请求摄像头权限...', 'loading');
+        
+        // 显示权限提示
+        permissionPrompt.style.display = 'block';
+        
+        // 请求摄像头权限
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          } 
+        });
+        
+        // 立即停止流，AR.js会重新获取
+        stream.getTracks().forEach(track => track.stop());
+        
+        // 隐藏权限提示
+        permissionPrompt.style.display = 'none';
+        
+        updateStatus('正在初始化AR系统...', 'loading');
+        
+        // 显示AR场景
+        scene.style.display = 'block';
+        
+        // 等待A-Frame完全加载
+        if (scene.hasLoaded) {
+          setupAREvents();
+          onARReady();
+        } else {
+          scene.addEventListener('loaded', () => {
+            setupAREvents();
+            onARReady();
+          });
+        }
+        
+      } catch (error) {
+        permissionPrompt.style.display = 'none';
+        console.error('AR初始化失败:', error);
+        
+        if (error.name === 'NotAllowedError') {
+          updateStatus('❌ 摄像头权限被拒绝，请刷新页面并允许访问', 'error');
+        } else if (error.name === 'NotFoundError') {
+          updateStatus('❌ 未找到摄像头设备', 'error');
+        } else if (error.name === 'NotReadableError') {
+          updateStatus('❌ 摄像头被其他应用占用', 'error');
+        } else {
+          updateStatus('❌ AR初始化失败，请重试', 'error');
+        }
+      }
+    }
+
+    // AR准备完成
+    function onARReady() {
+      isInitialized = true;
+      updateStatus('🔎 请将摄像头对准 Hiro 或 Kanji 标记', 'default');
+      
+      // 监听AR.js的video事件
+      setTimeout(() => {
+        const video = document.querySelector('video');
+        if (video) {
+          video.addEventListener('loadedmetadata', () => {
+            console.log('摄像头视频流已就绪');
+          });
+        }
+      }, 1000);
+    }
+
+    // 错误处理
+    window.addEventListener('error', (e) => {
+      console.error('全局错误:', e.error);
+      if (!isInitialized) {
+        updateStatus('❌ 加载失败，请刷新页面重试', 'error');
+      }
+    });
+
+    // 页面加载完成后初始化
+    window.addEventListener('load', async () => {
+      // 检查兼容性
+      const compatibilityIssues = checkCompatibility();
+      
+      if (compatibilityIssues.length > 0) {
+        console.warn('兼容性问题:', compatibilityIssues);
+        showCompatibilityWarning(compatibilityIssues);
+        
+        // 严重兼容性问题则不继续初始化
+        if (compatibilityIssues.some(issue => 
+          issue.includes('WebGL') || 
+          issue.includes('摄像头API') || 
+          issue.includes('HTTPS')
+        )) {
+          updateStatus('❌ 设备不支持AR功能', 'error');
+          return;
+        }
+      }
+
+      // 等待A-Frame加载完成
+      if (typeof AFRAME === 'undefined') {
+        updateStatus('❌ AR库加载失败，请检查网络连接', 'error');
+        return;
+      }
+
+      // 初始化AR系统
+      await initializeAR();
+    });
+
+    // 页面可见性变化处理
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // 页面隐藏时暂停
+        markersFound.clear();
+      } else if (isInitialized) {
+        // 页面重新可见时重置状态
+        updateStatus('🔎 请将摄像头对准 Hiro 或 Kanji 标记', 'default');
+      }
+    });
+
+    // 暴露全局函数供HTML调用
+    window.hideCompatibilityWarning = hideCompatibilityWarning;
+  </script>
+</body>
+</html>
