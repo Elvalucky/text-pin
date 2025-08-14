@@ -42,6 +42,7 @@
       position:fixed; left:0; right:0; bottom:0; z-index:20;
       background:rgba(0,0,0,.6); color:#fff; padding:10px 10px calc(12px + env(safe-area-inset-bottom));
       box-shadow:0 -8px 24px rgba(0,0,0,.25); backdrop-filter:blur(8px);
+      display:none; /* 点击开始后再显示 */
     }
     #ui form{ display:grid; grid-template-columns:1fr minmax(70px,110px) auto; gap:8px; align-items:end; }
     #ui label{ display:flex; flex-direction:column; font-size:12px; opacity:.95; }
@@ -60,25 +61,28 @@
 
     .a-enter-vr-button, .a-enter-ar-button, .a-orientation-modal{ display:none !important; }
     *{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+
+    /* 开始按钮 */
+    #startAR {
+      position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 30;
+      height: 48px; border: none; border-radius: 12px; background: #4ad; color: #002;
+      font-weight: 800; font-size: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.35);
+    }
   </style>
 </head>
 <body>
   <!-- 顶部状态条 -->
-  <div id="scanStatus">🔎 正在扫描 Hiro / Kanji…</div>
+  <div id="scanStatus">👋 点击下方按钮开始 AR</div>
   <div id="net">🟢 在线</div>
-  <div id="debug">调试信息加载中…</div>
+  <div id="debug">等待启动…</div>
 
-  <!-- AR 场景（pattern marker 优化） -->
-  <a-scene id="scene" embedded vr-mode-ui="enabled:false"
-           renderer="alpha:true; colorManagement:true; physicallyCorrectLights:true; antialias:true"
-           arjs="sourceType: webcam;
-                 videoTexture: false;
-                 detectionMode: mono;
-                 sourceWidth: 1280;
-                 sourceHeight: 720;
-                 maxDetectionRate: 60;
-                 debugUIEnabled: true;">
+  <!-- 开始按钮（用户手势触发，最稳） -->
+  <button id="startAR">开始 AR</button>
 
+  <!-- AR 场景：初始不加载 arjs，防相机抢占；点击后动态 setAttribute -->
+  <a-scene id="scene" style="display:none"
+           embedded vr-mode-ui="enabled:false"
+           renderer="alpha:true; colorManagement:true; physicallyCorrectLights:true; antialias:true">
     <a-entity light="type:ambient; intensity:0.8"></a-entity>
     <a-entity light="type:directional; intensity:0.9" position="0.5 1 0.5"></a-entity>
 
@@ -134,13 +138,13 @@
     const $scale= document.getElementById('scale');
     const $stat = document.getElementById('status');
     const $btn  = document.getElementById('submit');
-
+    const $start = document.getElementById('startAR');
     const setNet  = on => $net.textContent = on ? '🟢 在线' : '🔴 离线';
     const setDebug= txt => $debug.textContent = txt;
     setNet(navigator.onLine); addEventListener('online',()=>setNet(true)); addEventListener('offline',()=>setNet(false));
     const vibrate = (n=20)=>{ try{ navigator.vibrate && navigator.vibrate(n);}catch{} };
 
-    // 轻量节流版 setScan，避免频繁抖动
+    // 扫描状态（节流）
     let _scanTimer=null, _scanCache='';
     function setScan(txt, cls=''){
       if (txt===_scanCache) return;
@@ -149,8 +153,55 @@
         _scanCache = txt;
         $scan.className = cls;
         $scan.textContent = txt;
-      }, 120);
+      }, 100);
     }
+
+    /******** Start AR：用户手势里先要权限→释放→再让 AR.js 接管 ********/
+    const ARJS_ATTR = `
+      sourceType: webcam;
+      videoTexture: false;
+      detectionMode: mono;
+      sourceWidth: 1280;
+      sourceHeight: 720;
+      maxDetectionRate: 60;
+      debugUIEnabled: true
+    `;
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    function forceVideoVisible(){
+      const videos = document.querySelectorAll('video');
+      videos.forEach(v=>{
+        v.setAttribute('playsinline','true'); v.setAttribute('webkit-playsinline','true'); v.muted = true;
+        v.style.display='block'; v.style.visibility='visible'; v.style.opacity='1';
+      });
+      const canvas = document.querySelector('.a-canvas'); if(canvas){ canvas.style.zIndex='1'; canvas.style.background='transparent'; }
+    }
+
+    $start.addEventListener('click', async () => {
+      try {
+        setScan('📷 正在请求相机权限…');
+        // 1) 要权限（在用户手势里最稳）
+        const s = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } });
+        // 2) 立刻释放，避免和 AR.js 打架
+        s.getTracks().forEach(t => t.stop());
+        await new Promise(r => setTimeout(r, 300)); // 给硬件 300ms 缓冲
+
+        // 3) 初始化 AR.js（此时不会冲突）
+        scene.setAttribute('arjs', ARJS_ATTR);
+        scene.style.display = 'block';
+        $start.style.display = 'none';
+        document.getElementById('ui').style.display = 'block';
+        setScan('🔎 正在扫描 Hiro / Kanji…');
+
+        // iOS 若出现首帧黑屏，多次强制可见
+        setTimeout(forceVideoVisible, 600);
+        if (isIOS){ [1500, 3000, 5000].forEach(t=>setTimeout(forceVideoVisible, t)); }
+      } catch (e) {
+        console.error(e);
+        setScan('❌ 需要摄像头权限才能使用 AR', 'error');
+        alert('需要相机权限才能使用 AR');
+      }
+    });
 
     /******** 识别状态管理（事件 + 轮询） ********/
     const markerState = {
@@ -188,7 +239,7 @@
     hiro.addEventListener('markerLost',  ()=>onLost('Hiro'));
     kanji.addEventListener('markerLost', ()=>onLost('Kanji'));
 
-    // 轮询更稳
+    // 轮询更稳（Safari/部分机型）
     let pollCount=0; const DETECT=3, TIMEOUT=1500;
     setInterval(()=>{
       pollCount++;
@@ -214,7 +265,7 @@ Hiro: ${vis.hiro?'✅可见':'❌隐藏'} (连${markerState.hiro.consecutiveVisi
 Kanji:${vis.kanji?'✅可见':'❌隐藏'} (连${markerState.kanji.consecutiveVisible}) 状态:${markerState.kanji.detected?'已识别':'未识别'}`);
     },150);
 
-    /******** 点击拾取（新增：校验“当前点击的标记可见”） ********/
+    /******** 点击拾取（校验“当前点击的标记可见”） ********/
     const USER_ID = 'user_' + Math.random().toString(36).slice(2,8);
     let CURRENT = { anchor:null, pos:null };
 
@@ -249,7 +300,6 @@ Kanji:${vis.kanji?'✅可见':'❌隐藏'} (连${markerState.kanji.consecutiveVi
 
       const marker = findMarker(hit.object.el); if(!marker) return;
 
-      // 关键校验：必须是“当前真的可见的那个标记”
       if (!marker.object3D?.visible){
         setScan('⚠️ 标记未被稳定识别，请把整张标记放入取景框', 'error');
         setTimeout(updateScanStatus, 1200);
@@ -340,38 +390,12 @@ Kanji:${vis.kanji?'✅可见':'❌隐藏'} (连${markerState.kanji.consecutiveVi
       }catch(err){
         console.error(err); setScan('❌ 提交失败','error'); showPreview(anchor,pos,false);
       }finally{
-        setTimeout(()=>{ $btn.disabled=false; updateScanStatus(); }, 1000);
+        setTimeout(()=>{ $btn.disabled=false; updateScanStatus(); }, 800);
       }
     });
 
-    /******** iOS 视频可见性保障 ********/
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const forceVideoVisible = ()=>{
-      const videos = document.querySelectorAll('video');
-      videos.forEach(v=>{
-        v.setAttribute('playsinline','true'); v.setAttribute('webkit-playsinline','true'); v.muted = true;
-        v.style.display='block'; v.style.visibility='visible'; v.style.opacity='1';
-      });
-      const canvas = document.querySelector('.a-canvas'); if(canvas){ canvas.style.zIndex='1'; canvas.style.background='transparent'; }
-    };
-    addEventListener('load', ()=>{ 
-      setTimeout(forceVideoVisible, 800); 
-      if(isIOS){ [2000,4000,6000].forEach(t=>setTimeout(forceVideoVisible,t)); }
-    });
-    document.addEventListener('visibilitychange', ()=>{ 
-      if(!document.hidden) setTimeout(forceVideoVisible, 500); 
-    });
-
-    // 摄像头权限（可见提示在浏览器原生层）
-    if (navigator.mediaDevices?.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then(()=>console.log('摄像头权限已获取'))
-        .catch((err)=>{ console.error('摄像头权限被拒绝:', err); setScan('❌ 需要摄像头权限才能使用AR', 'error'); });
-    }
-
-    scene.addEventListener('loaded', () => {
-      setTimeout(()=> setDebug('AR场景已加载，开始标记检测…'), 600);
-    });
+    // 页面回到前台时，补一次可见性修复
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) setTimeout(forceVideoVisible, 400); });
   </script>
 </body>
 </html>
