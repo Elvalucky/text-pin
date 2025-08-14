@@ -8,11 +8,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <!-- A-Frame + AR.js（稳定CDN） -->
+  <!-- A-Frame + AR.js -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.3/aframe/build/aframe-ar.js"></script>
 
-  <!-- 预加载 Firebase 模块（避免首次导入闪烁） -->
+  <!-- 预加载 Firebase 模块（减少首帧闪烁） -->
   <script type="module">
     import "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
     import "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
@@ -22,7 +22,7 @@
     html, body { margin:0; padding:0; height:100dvh; background:#000; overflow:hidden;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
 
-    /* 顶部状态 & 网络状态 */
+    /* 顶部状态 & 网络状态 & 调试 */
     #scanStatus{
       position:fixed; top:8px; left:8px; z-index:20; background:rgba(0,0,0,.75);
       color:#fff; padding:8px 12px; border-radius:12px; font-size:13px; backdrop-filter:blur(8px);
@@ -31,6 +31,11 @@
     #scanStatus.error{ background:rgba(239,68,68,.9); }
     #net{ position:fixed; top:8px; right:8px; z-index:20; background:rgba(0,0,0,.6);
       color:#fff; padding:6px 10px; border-radius:10px; font-size:12px; }
+    #debug{
+      position:fixed; top:50px; left:8px; z-index:20; background:rgba(0,0,0,.6);
+      color:#fff; padding:6px 10px; border-radius:10px; font-size:11px; max-width:280px; line-height:1.35;
+      white-space:pre-wrap; max-height:150px; overflow-y:auto;
+    }
 
     /* 底部输入条 */
     #ui{
@@ -45,7 +50,7 @@
     #ui button{ height:36px; border:none; border-radius:10px; background:#4ad; color:#002; font-weight:700; padding:0 16px; }
     #status{ margin-top:6px; font-size:12px; opacity:.85; }
 
-    /* 让相机画面一定可见（DOM视频做背景 + WebGL画布在上层） */
+    /* 相机画面可见（DOM视频做底、WebGL画布在上） */
     video, #arjs-video, video#arjs-video{
       position:fixed !important; top:0 !important; left:0 !important;
       width:100vw !important; height:100vh !important; object-fit:cover !important;
@@ -61,39 +66,57 @@
   <!-- 顶部状态条 -->
   <div id="scanStatus">🔎 正在扫描 Hiro / Kanji…</div>
   <div id="net">🟢 在线</div>
+  <div id="debug">调试信息加载中…</div>
 
-  <!-- AR 场景（使用 DOM 视频：videoTexture:false） -->
+  <!-- AR 场景（pattern marker 优化） -->
   <a-scene id="scene" embedded vr-mode-ui="enabled:false"
            renderer="alpha:true; colorManagement:true; physicallyCorrectLights:true; antialias:true"
-           arjs="sourceType:webcam; videoTexture:false; debugUIEnabled:false; trackingMethod:best; maxDetectionRate:60; canvasWidth:640; canvasHeight:480">
+           arjs="sourceType: webcam;
+                 videoTexture: false;
+                 detectionMode: mono;
+                 patternRatio: 0.90;
+                 sourceWidth: 1280;
+                 sourceHeight: 720;
+                 maxDetectionRate: 60;
+                 debugUIEnabled: false;">
 
-    <a-entity light="type:ambient; intensity:0.7"></a-entity>
-    <a-entity light="type:directional; intensity:0.8" position="0.5 1 0.5"></a-entity>
+    <a-entity light="type:ambient; intensity:0.8"></a-entity>
+    <a-entity light="type:directional; intensity:0.9" position="0.5 1 0.5"></a-entity>
 
-    <!-- 识别两种预设标记；加 emitevents 以确保能触发事件 -->
-    <a-marker id="marker-hiro" preset="hiro" emitevents="true">
-      <!-- 放大不可见的可点平面（用于拾取三维点） -->
+    <!-- Hiro 标记 -->
+    <a-marker id="marker-hiro" preset="hiro" emitevents="true" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
       <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0" material="opacity:0; transparent:true"></a-plane>
+      <a-box class="marker-indicator" position="0 0.3 0" width="0.6" height="0.6" depth="0.6"
+             material="color:#00ff00; opacity:0.9"
+             animation="property: rotation; to: 0 360 0; loop: true; dur: 2000"></a-box>
+      <a-text class="marker-label" value="HIRO 标记已识别" position="0 0.8 0" align="center" 
+              color="#00ff00" scale="0.4 0.4 0.4"></a-text>
     </a-marker>
 
-    <a-marker id="marker-kanji" preset="kanji" emitevents="true">
+    <!-- Kanji 标记 -->
+    <a-marker id="marker-kanji" preset="kanji" emitevents="true" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
       <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0" material="opacity:0; transparent:true"></a-plane>
+      <a-box class="marker-indicator" position="0 0.3 0" width="0.6" height="0.6" depth="0.6"
+             material="color:#ffd166; opacity:0.9"
+             animation="property: rotation; to: 360 0 360; loop: true; dur: 2500"></a-box>
+      <a-text class="marker-label" value="KANJI 标记已识别" position="0 0.8 0" align="center" 
+              color="#ffd166" scale="0.4 0.4 0.4"></a-text>
     </a-marker>
 
-    <!-- 用鼠标/触摸射线点击 .dropzone -->
+    <!-- 射线拾取 -->
     <a-entity id="mouse" cursor="rayOrigin: mouse" raycaster="objects: .dropzone; interval: 0"></a-entity>
 
     <a-entity camera></a-entity>
   </a-scene>
 
-  <!-- 底部输入栏（多人共享） -->
+  <!-- 底部输入栏 -->
   <div id="ui">
     <form id="form">
       <label>Text
         <input id="msg" placeholder="输入文本…" maxlength="80" />
       </label>
       <label>Scale
-        <input id="scale" value="1.0" />
+        <input id="scale" type="number" step="0.1" value="1.0" inputmode="decimal" />
       </label>
       <button type="submit" id="submit">提交 / Pin</button>
     </form>
@@ -101,9 +124,10 @@
   </div>
 
   <script type="module">
-    /******** 基本状态 ********/
+    /******** DOM & 状态 ********/
     const $scan = document.getElementById('scanStatus');
     const $net  = document.getElementById('net');
+    const $debug= document.getElementById('debug');
     const scene = document.getElementById('scene');
     const mouse = document.getElementById('mouse');
     const $form = document.getElementById('form');
@@ -112,39 +136,86 @@
     const $stat = document.getElementById('status');
     const $btn  = document.getElementById('submit');
 
-    const setScan = (txt, cls='') => { $scan.className = cls; $scan.textContent = txt; };
     const setNet  = on => $net.textContent = on ? '🟢 在线' : '🔴 离线';
+    const setDebug= txt => $debug.textContent = txt;
     setNet(navigator.onLine); addEventListener('online',()=>setNet(true)); addEventListener('offline',()=>setNet(false));
     const vibrate = (n=20)=>{ try{ navigator.vibrate && navigator.vibrate(n);}catch{} };
 
-    /******** 识别状态（事件 + 轮询双保险） ********/
-    const found = new Set();
+    // 轻量节流版 setScan，避免频繁抖动
+    let _scanTimer=null, _scanCache='';
+    function setScan(txt, cls=''){
+      if (txt===_scanCache) return;
+      clearTimeout(_scanTimer);
+      _scanTimer = setTimeout(()=>{
+        _scanCache = txt;
+        $scan.className = cls;
+        $scan.textContent = txt;
+      }, 120);
+    }
+
+    /******** 识别状态管理（事件 + 轮询） ********/
+    const markerState = {
+      hiro:  { detected:false, lastSeen:0, consecutiveVisible:0 },
+      kanji: { detected:false, lastSeen:0, consecutiveVisible:0 }
+    };
     const hiro  = document.getElementById('marker-hiro');
     const kanji = document.getElementById('marker-kanji');
 
-    const onFound = name => { found.add(name); setScan(`✅ 已识别 ${name}，可点选放置`, 'success'); vibrate(20); };
-    const onLost  = ()   => { if(found.size===0) setScan('🔎 正在扫描 Hiro / Kanji…'); };
+    const updateScanStatus = () => {
+      const active = Object.entries(markerState)
+        .filter(([_, s]) => s.detected)
+        .map(([name]) => name.charAt(0).toUpperCase()+name.slice(1));
+      if (active.length>0) setScan(`✅ 已识别 ${active.join(' / ')}，可点选放置`, 'success');
+      else setScan('🔎 正在扫描 Hiro / Kanji…');
+    };
 
-    // 事件监听
+    const onFound = (name) => {
+      const key = name.toLowerCase();
+      const s = markerState[key];
+      if (!s.detected){
+        s.detected = true; vibrate(20);
+        setScan(`✅ 已识别 ${name}，可点选放置`, 'success');
+      }
+      s.lastSeen = Date.now(); s.consecutiveVisible++;
+      updateScanStatus();
+    };
+    const onLost = (name) => {
+      const key = name.toLowerCase(); const s = markerState[key];
+      if (s.detected){ s.detected=false; s.consecutiveVisible=0; updateScanStatus(); }
+    };
+
     hiro.addEventListener('markerFound', ()=>onFound('Hiro'));
     kanji.addEventListener('markerFound', ()=>onFound('Kanji'));
-    hiro.addEventListener('markerLost',  ()=>{found.delete('Hiro'); onLost();});
-    kanji.addEventListener('markerLost', ()=>{found.delete('Kanji'); onLost();});
+    hiro.addEventListener('markerLost',  ()=>onLost('Hiro'));
+    kanji.addEventListener('markerLost', ()=>onLost('Kanji'));
 
-    // 轮询可见性（Safari 上更稳）
+    // 轮询更稳
+    let pollCount=0; const DETECT=3, TIMEOUT=1500;
     setInterval(()=>{
-      const hVis = hiro.object3D?.visible;
-      const kVis = kanji.object3D?.visible;
-      if(hVis || kVis){
-        if(hVis) found.add('Hiro');
-        if(kVis) found.add('Kanji');
-        setScan(`✅ 已识别 ${[...found].join(' / ')}，可点选放置`, 'success');
-      }else{
-        found.clear(); onLost();
-      }
-    }, 500);
+      pollCount++;
+      const now = Date.now();
+      const vis = { hiro: !!(hiro.object3D&&hiro.object3D.visible),
+                    kanji:!!(kanji.object3D&&kanji.object3D.visible) };
+      ['hiro','kanji'].forEach(name=>{
+        const s = markerState[name];
+        if (vis[name]){
+          s.lastSeen = now; s.consecutiveVisible++;
+          if (!s.detected && s.consecutiveVisible>=DETECT){
+            onFound(name.charAt(0).toUpperCase()+name.slice(1));
+          }
+        }else{
+          s.consecutiveVisible=0;
+          if (s.detected && now - s.lastSeen > TIMEOUT){
+            onLost(name.charAt(0).toUpperCase()+name.slice(1));
+          }
+        }
+      });
+      setDebug(`轮询:${pollCount}
+Hiro: ${vis.hiro?'✅可见':'❌隐藏'} (连${markerState.hiro.consecutiveVisible}) 状态:${markerState.hiro.detected?'已识别':'未识别'}
+Kanji:${vis.kanji?'✅可见':'❌隐藏'} (连${markerState.kanji.consecutiveVisible}) 状态:${markerState.kanji.detected?'已识别':'未识别'}`);
+    },150);
 
-    /******** 选点预览 ********/
+    /******** 点击拾取（新增：校验“当前点击的标记可见”） ********/
     const USER_ID = 'user_' + Math.random().toString(36).slice(2,8);
     let CURRENT = { anchor:null, pos:null };
 
@@ -154,16 +225,11 @@
 
     function showPreview(anchor, pos, ok=false){
       const parent = document.getElementById(`marker-${anchor}`); if(!parent) return;
-
-      // ring cursor
       let cur = document.getElementById(`cursor-${anchor}`);
       if(!cur){ cur = document.createElement('a-entity'); cur.id=`cursor-${anchor}`; parent.appendChild(cur); }
-      cur.setAttribute('geometry', ok? 'primitive:ring; radiusInner:0.015; radiusOuter:0.025'
-                               : 'primitive:ring; radiusInner:0.012; radiusOuter:0.02');
+      cur.setAttribute('geometry', ok? 'primitive:ring; radiusInner:0.015; radiusOuter:0.025' : 'primitive:ring; radiusInner:0.012; radiusOuter:0.02');
       cur.setAttribute('material', ok? 'color:#00FF00; opacity:1' : 'color:#FFD166; opacity:.95');
       cur.setAttribute('position', `${pos[0]} ${pos[1]} ${pos[2]}`);
-
-      // translucent text preview
       let prev = document.getElementById(`preview-${anchor}`);
       if(!prev){ prev = document.createElement('a-entity'); prev.id=`preview-${anchor}`; parent.appendChild(prev); }
       const msg = $msg.value || '';
@@ -183,12 +249,21 @@
       if(!hit.object?.el?.classList?.contains('dropzone')) return;
 
       const marker = findMarker(hit.object.el); if(!marker) return;
-      const local = marker.object3D.worldToLocal(hit.point.clone());
+
+      // 关键校验：必须是“当前真的可见的那个标记”
+      if (!marker.object3D?.visible){
+        setScan('⚠️ 标记未被稳定识别，请把整张标记放入取景框', 'error');
+        setTimeout(updateScanStatus, 1200);
+        return;
+      }
+
       const anchor = (marker.id==='marker-hiro')?'hiro':'kanji';
-      const pos = norm(local.x, local.y, local.z);
+      const local  = marker.object3D.worldToLocal(hit.point.clone());
+      const pos    = norm(local.x, local.y, local.z);
       CURRENT = { anchor, pos };
       $stat.textContent = `已选：${anchor} (${pos.map(n=>n.toFixed(2)).join(', ')})`;
       showPreview(anchor, pos);
+      vibrate(30);
     });
 
     /******** Firebase 实时同步 ********/
@@ -208,7 +283,6 @@
     const db  = getFirestore(app);
     const pins = collection(db, "pins");
 
-    // 渲染 Firestore 中的 pin
     const q = query(pins, orderBy('ts','asc'));
     onSnapshot(q, (snap)=>{
       snap.docChanges().forEach(ch=>{
@@ -223,10 +297,10 @@
         const [x,y,z] = d.pos || [0,0,0];
         el.setAttribute('position', `${x} ${y} ${z}`);
 
-        if(d.modelUrl){ // 未来可渲染3D模型
+        if(d.modelUrl){
           el.removeAttribute('text');
           const s=d.scale||1; el.setAttribute('gltf-model', d.modelUrl); el.setAttribute('scale', `${s} ${s} ${s}`);
-        }else{          // 文本
+        }else{
           const mine = d.userId===USER_ID;
           const base = anchor==='hiro' ? '#90EE90' : '#FFD166';
           const color= mine ? base : '#ccc';
@@ -237,14 +311,12 @@
       });
     });
 
-    // 写入 Firestore
     async function savePin({anchor,pos,text,scale}){
       return await addDoc(pins, {
         mode:'arjs', anchor, pos, text, scale, userId: USER_ID, ts: serverTimestamp()
       });
     }
 
-    // 表单提交
     $form.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const msg = ($msg.value||'').trim();
@@ -260,6 +332,7 @@
         await savePin({anchor,pos,text:msg,scale:sc});
         setScan('✅ 已提交，其他人也能看到','success');
         $msg.value='';
+        vibrate(50);
         setTimeout(()=>{
           ['preview-','cursor-'].forEach(p=>{ const el=document.getElementById(p+anchor); if(el) el.remove(); });
           $stat.textContent='就绪';
@@ -268,11 +341,11 @@
       }catch(err){
         console.error(err); setScan('❌ 提交失败','error'); showPreview(anchor,pos,false);
       }finally{
-        setTimeout(()=>{ $btn.disabled=false; onLost(); }, 1000);
+        setTimeout(()=>{ $btn.disabled=false; updateScanStatus(); }, 1000);
       }
     });
 
-    /******** iOS 视频可见性保障（延迟修复） ********/
+    /******** iOS 视频可见性保障 ********/
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const forceVideoVisible = ()=>{
       const videos = document.querySelectorAll('video');
@@ -282,8 +355,24 @@
       });
       const canvas = document.querySelector('.a-canvas'); if(canvas){ canvas.style.zIndex='1'; canvas.style.background='transparent'; }
     };
-    addEventListener('load', ()=>{ setTimeout(forceVideoVisible, 800); if(isIOS){ [2000,4000,6000].forEach(t=>setTimeout(forceVideoVisible,t)); }});
-    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) setTimeout(forceVideoVisible, 500); });
+    addEventListener('load', ()=>{ 
+      setTimeout(forceVideoVisible, 800); 
+      if(isIOS){ [2000,4000,6000].forEach(t=>setTimeout(forceVideoVisible,t)); }
+    });
+    document.addEventListener('visibilitychange', ()=>{ 
+      if(!document.hidden) setTimeout(forceVideoVisible, 500); 
+    });
+
+    // 摄像头权限（可见提示在浏览器原生层）
+    if (navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(()=>console.log('摄像头权限已获取'))
+        .catch((err)=>{ console.error('摄像头权限被拒绝:', err); setScan('❌ 需要摄像头权限才能使用AR', 'error'); });
+    }
+
+    scene.addEventListener('loaded', () => {
+      setTimeout(()=> setDebug('AR场景已加载，开始标记检测…'), 600);
+    });
   </script>
 </body>
 </html>
