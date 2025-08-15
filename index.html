@@ -78,21 +78,31 @@
     <a-entity light="type:ambient; intensity:0.8"></a-entity>
     <a-entity light="type:directional; intensity:0.9" position="0.5 1 0.5"></a-entity>
 
-    <!-- Marker 仅用于“检测 + 点击拾取”（去掉了绿色斜柱/指示） -->
-    <a-marker id="marker-hiro" preset="hiro" emitevents="true" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
-      <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0" material="opacity:0; transparent:true"></a-plane>
+    <!-- Marker 仅用于“检测 + 点击拾取”（无绿色柱） -->
+    <a-marker id="marker-hiro" preset="hiro"
+      emitevents="true"
+      smooth="true" smoothCount="12" smoothTolerance="0.015" smoothThreshold="8">
+      <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0"
+               material="opacity:0; transparent:true; side:double"></a-plane>
     </a-marker>
 
-    <a-marker id="marker-kanji" preset="kanji" emitevents="true" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
-      <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0" material="opacity:0; transparent:true"></a-plane>
+    <a-marker id="marker-kanji" preset="kanji"
+      emitevents="true"
+      smooth="true" smoothCount="12" smoothTolerance="0.015" smoothThreshold="8">
+      <a-plane class="dropzone" width="6" height="6" rotation="-90 0 0"
+               material="opacity:0; transparent:true; side:double"></a-plane>
     </a-marker>
 
     <!-- “锚点根节点”：所有内容都挂在这里（做丢失保活） -->
     <a-entity id="anchor-root-hiro"  visible="false"></a-entity>
     <a-entity id="anchor-root-kanji" visible="false"></a-entity>
 
-    <!-- 射线拾取 -->
-    <a-entity id="mouse" cursor="rayOrigin: mouse" raycaster="objects: .dropzone; interval: 0"></a-entity>
+    <!-- 射线拾取（增加 touch/mouse 的 downEvents，far 更远） -->
+    <a-entity id="mouse"
+      cursor="rayOrigin: mouse; downEvents: mousedown,touchstart"
+      raycaster="objects: .dropzone; interval: 0; far: 1000">
+    </a-entity>
+
     <a-entity camera></a-entity>
   </a-scene>
 
@@ -106,7 +116,7 @@
       </label>
       <button type="submit" id="submit">提交 / Pin</button>
     </form>
-    <div id="status">未选位置（可直接点击标记内任意位置移动实时文本）</div>
+    <div id="status">未选位置（在标记内点击可移动实时文本）</div>
   </div>
 
   <script type="module">
@@ -142,7 +152,8 @@
       sourceWidth: 1280;
       sourceHeight: 720;
       maxDetectionRate: 60;
-      debugUIEnabled: true
+      patternRatio: 0.85;
+      debugUIEnabled: false
     `;
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     function forceVideoVisible(){
@@ -172,7 +183,7 @@
       }
     });
 
-    /******** 粘性锚点 + 丢失保活 ********/
+    /******** 粘性锚点 + 丢失保活（5s） ********/
     const HOLD_MS = 5000; // 丢失后保活 5 秒
     const anchors = {
       hiro:  { marker: document.getElementById('marker-hiro'),  root: document.getElementById('anchor-root-hiro'),
@@ -220,7 +231,6 @@
       copyWorldTransform(A.marker.object3D, A.root.object3D);
       A.root.setAttribute('visible', true);
 
-      // 首次识别到哪个，就作为 activeAnchor，并确保有实时文本
       if (!activeAnchor) activeAnchor = name;
       ensureLive(name);
       syncLiveStyle();
@@ -254,7 +264,7 @@
           if (now <= A.holdUntil){
             A.root.setAttribute('visible', true); // 保活显示
           }else if (now - A.lastSeen > HARD_LOST_TIMEOUT){
-            A.root.setAttribute('visible', false);
+            A.root.setAttribute('visible', false); // 超过 5s 隐藏
           }
         }
       });
@@ -277,24 +287,24 @@ Kanji:${anchors.kanji.marker.object3D.visible?'✅可见':'❌隐藏'}  保活�
       }
     }
 
-    /******** 交互：打字=改实时文本；点击=移动实时文本 ********/
+    /******** 交互：打字=改实时文本；点击=移动实时文本（高精度） ********/
     const USER_ID = 'user_' + Math.random().toString(36).slice(2,8);
     let CURRENT = { anchor:null, pos:null };
+    const EPS = 0.002; // 抬高 y 避免穿插
 
     function findMarker(el){ let p=el; while(p && p.tagName){ if(p.tagName.toLowerCase()==='a-marker') return p; p=p.parentEl;} return null; }
-    const round2 = n => Math.round(n*100)/100;
-    const norm   = (x,y,z)=>[round2(x), Math.max(round2(y),0)+0.001, round2(z)];
 
     // 文本实时更新
     $msg.addEventListener('input', syncLiveStyle);
     $scale.addEventListener('input', syncLiveStyle);
 
-    // 点击移动实时文本
-    scene.addEventListener('click', ()=>{
+    function handlePick(){
       const rc = mouse.components.raycaster;
       if(!rc || !rc.intersections?.length) return;
-      const hit = rc.intersections[0];
-      if(!hit.object?.el?.classList?.contains('dropzone')) return;
+
+      // 只取命中的 dropzone 中距离最近的一个
+      const hit = rc.intersections.find(i=>i.object?.el?.classList?.contains('dropzone')) || rc.intersections[0];
+      if(!hit || !hit.object?.el?.classList?.contains('dropzone')) return;
 
       const markerEl = findMarker(hit.object.el); if(!markerEl) return;
       const name = (markerEl.id==='marker-hiro')?'hiro':'kanji';
@@ -305,22 +315,25 @@ Kanji:${anchors.kanji.marker.object3D.visible?'✅可见':'❌隐藏'}  保活�
       const ok = markerEl.object3D.visible || Date.now()<=A.holdUntil;
       if (!ok){ setScan('⚠️ 标记未稳定，先把标记放入取景框', 'error'); setTimeout(updateScanStatus, 1200); return; }
 
-      // 确保点击瞬间姿态最新
+      // 点击瞬间若可见，先同步姿态；再用“根节点”把世界点转成本地点 —— 精准且与保活一致
       if (markerEl.object3D.visible) copyWorldTransform(markerEl.object3D, A.root.object3D);
       ensureLive(name); syncLiveStyle();
 
-      // 转为锚点根的局部坐标
       const root = A.root.object3D;
-      const wp = hit.point.clone();
-      const lp = root.worldToLocal(wp);
-      const pos = norm(lp.x, lp.y, lp.z);
+      const wp = hit.point.clone();       // 世界坐标命中点
+      const lp = root.worldToLocal(wp);   // 转成 anchor-root 本地
+      const pos = [ lp.x, Math.max(lp.y,0)+EPS, lp.z ]; // 不四舍五入，保精度
 
       A.live.setAttribute('position', `${pos[0]} ${pos[1]} ${pos[2]}`);
       CURRENT = { anchor:name, pos };
-      $stat.textContent = `🎯 已移动到：${name.toUpperCase()} (${pos.map(n=>n.toFixed(2)).join(', ')})`;
+      $stat.textContent = `🎯 已移动到：${name.toUpperCase()} (${pos.map(n=>n.toFixed(3)).join(', ')})`;
       setScan('✅ 文本已移动；可继续输入修改或点击其他位置', 'success');
       vibrate(15);
-    });
+    }
+
+    // click + touchstart 都触发拾取
+    scene.addEventListener('click', handlePick, {passive:true});
+    scene.addEventListener('touchstart', (e)=>{ if(e.touches?.length===1) handlePick(); }, {passive:true});
 
     /******** Firebase：按 Pin 才保存为共享锚点 ********/
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -339,7 +352,7 @@ Kanji:${anchors.kanji.marker.object3D.visible?'✅可见':'❌隐藏'}  保活�
     const db  = getFirestore(app);
     const pins = collection(db, "pins");
 
-    // 渲染云端 pin（挂到 anchor-root-* 下）
+    // 渲染云端 pin（挂到 anchor-root-* 下，局部坐标不变）
     const q = query(pins, orderBy('ts','asc'));
     onSnapshot(q, (snap)=>{
       snap.docChanges().forEach(ch=>{
@@ -380,7 +393,7 @@ Kanji:${anchors.kanji.marker.object3D.visible?'✅可见':'❌隐藏'}  保活�
       const scale = parseFloat($scale.value||'1')||1;
 
       // 若用户没再点位置，就用“当前实时文本”的位置
-      let anchor = CURRENT.anchor || activeAnchor;
+      let anchor = (CURRENT.anchor || activeAnchor);
       if (!anchor){ alert('请先让相机识别任意标记'); return; }
 
       const live = anchors[anchor].live;
